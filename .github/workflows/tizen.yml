@@ -133,8 +133,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # A semver pre-release identifier, as in tizen-v2.20.1-rc1, publishes
+          # as a GitHub pre-release; a plain version tag publishes as a release.
+          flags=()
+          case "${GITHUB_REF_NAME#tizen-v}" in
+            *-*) flags+=(--prerelease) ;;
+          esac
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
-            --title "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" "${flags[@]}" \
             --notes 'Sideload package for Tizen 6.0 TV (ARM32). Developer Mode is required; this is not a Samsung Store build.' \
             build/tizen-release/plezy-tizen-6-arm-release.tpk \
             build/tizen-release/inspection.json \

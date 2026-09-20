@@ -169,7 +169,8 @@ reads `TIZEN_AUTHOR_P12_BASE64` and `TIZEN_AUTHOR_PASSWORD` repository secrets.
 GitHub withholds secrets from fork pull requests, so that job cannot run for
 one. The key is staged outside the workspace, mounted read-only, and deleted
 after the build; only the three allowlisted files are ever uploaded. A tagged
-run also attaches them to a GitHub release. Signing material still must not be
+run also attaches them to a GitHub release, marked as a pre-release when the
+tag carries a semver pre-release identifier such as `tizen-v2.20.1-rc1`. Signing material still must not be
 committed, and this remains sideload signing, not Samsung Store entitlement.
 
 Inherited upstream CI/release/publishing jobs are repository-guarded. Their
