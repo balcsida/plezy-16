@@ -28,8 +28,6 @@ class PlayerTizen extends PlayerBase with VideoRectSupport {
   @override
   bool get supportsSecondarySubtitles => false;
   @override
-  bool get attachesExternalSubtitlesAtOpen => true;
-  @override
   bool get providesNativeStats => true;
 
   int _session = 0;
@@ -264,14 +262,6 @@ class PlayerTizen extends PlayerBase with VideoRectSupport {
         if (identical(_captionClient, client)) _captionClient = null;
       }
     }
-  }
-
-  @override
-  Future<void> addSubtitleTrack({required String uri, String? title, String? language, bool select = false}) async {
-    final track = SubtitleTrack.uri(uri, title: title, language: language);
-    if (!_external.any((t) => t.uri == uri)) _external.add(track);
-    _publishTracks();
-    if (select) await selectSubtitleTrack(track);
   }
 
   void _clearCaption({bool clearCues = true}) {
