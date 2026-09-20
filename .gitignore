@@ -75,3 +75,7 @@ maestro/**/*.png
 
 server/deploy.sh
 server/Caddyfile
+
+# Tizen toolchain and local signing material (never commit).
+.toolchains/
+.tizen-signing/
