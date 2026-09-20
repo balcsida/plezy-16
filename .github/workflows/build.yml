@@ -47,6 +47,8 @@ env:
 
 jobs:
   validate-trusted-ref:
+    # Fork Tizen builds use tizen.yml.
+    if: github.repository == 'edde746/plezy'
     name: Validate trusted build ref
     runs-on: ubuntu-latest
     permissions: {}

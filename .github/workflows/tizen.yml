@@ -1,0 +1,141 @@
+name: Tizen 6 TV
+
+'on':
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tizen-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tv-arm-release:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Run host regressions on Ubuntu 22.04
+        # sqlite3's pinned host library requires glibc >= 2.33; Focal has 2.31.
+        # Host tests are separate from the API-6 native build environment.
+        run: |
+          scripts/tizen/bootstrap.sh
+          scripts/tizen/pub_get.sh --enforce-lockfile
+          scripts/tizen/check.sh
+      - name: Build pinned Linux toolchain environment
+        run: |
+          docker build --platform linux/amd64 \
+            --build-arg BUILDER_UID="$(id -u)" \
+            --build-arg BUILDER_GID="$(id -g)" \
+            -t plezy-tizen-build scripts/tizen
+      - name: Verify and build API 6 TV ARM release
+        # IPC_LOCK is required by gnome-keyring's secure-memory capability.
+        # No privileged container, personal secrets, TV or persistent keyring.
+        run: |
+          docker run --rm --init --platform linux/amd64 --cap-add IPC_LOCK \
+            -v "$GITHUB_WORKSPACE:/work" plezy-tizen-build bash -c '
+              set -euo pipefail
+              scripts/tizen/bootstrap.sh --sdk
+              scripts/tizen/pub_get.sh --enforce-lockfile
+              dotnet run --project test/tizen_native/GeometryTests.csproj
+              dotnet run --project test/tizen_native/player/PlayerTests.csproj
+              scripts/tizen/build.sh --test-signing
+            '
+      - name: Publish only inspected test-signed artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: plezy-tizen-6-tv-arm-test-signed
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            build/tizen-release/plezy-tizen-6-arm-release.tpk
+            build/tizen-release/inspection.json
+            build/tizen-release/SHA256SUMS
+
+  tv-arm-signed-release:
+    # Installable downloads signed by the preserved author, so an installed app
+    # upgrades in place instead of needing a reinstall. Repository-guarded, and
+    # fork pull requests never receive these secrets.
+    needs: tv-arm-release
+    if: >-
+      github.repository == 'balcsida/plezy' &&
+      (github.event_name == 'workflow_dispatch' ||
+      startsWith(github.ref, 'refs/tags/tizen-v'))
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Stage the preserved author outside the workspace
+        env:
+          AUTHOR_P12_BASE64: ${{ secrets.TIZEN_AUTHOR_P12_BASE64 }}
+          AUTHOR_PASSWORD: ${{ secrets.TIZEN_AUTHOR_PASSWORD }}
+        run: |
+          test -n "$AUTHOR_P12_BASE64" || { echo 'Missing TIZEN_AUTHOR_P12_BASE64.' >&2; exit 1; }
+          test -n "$AUTHOR_PASSWORD" || { echo 'Missing TIZEN_AUTHOR_PASSWORD.' >&2; exit 1; }
+          umask 077
+          mkdir -p "$RUNNER_TEMP/signing"
+          printf '%s' "$AUTHOR_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/signing/author.p12"
+          printf '%s' "$AUTHOR_PASSWORD" > "$RUNNER_TEMP/signing/author.pwd"
+      - name: Build pinned Linux toolchain environment
+        run: |
+          docker build --platform linux/amd64 \
+            --build-arg BUILDER_UID="$(id -u)" \
+            --build-arg BUILDER_GID="$(id -g)" \
+            -t plezy-tizen-build scripts/tizen
+      - name: Build the signed API 6 TV ARM release
+        # The key is mounted read-only from outside the workspace, so it cannot
+        # be picked up by the artifact allowlist below.
+        run: |
+          docker run --rm --init --platform linux/amd64 --cap-add IPC_LOCK \
+            -v "$GITHUB_WORKSPACE:/work" -v "$RUNNER_TEMP/signing:/signing:ro" \
+            plezy-tizen-build bash -c '
+              set -euo pipefail
+              scripts/tizen/bootstrap.sh --sdk
+              scripts/tizen/pub_get.sh --enforce-lockfile
+              dotnet run --project test/tizen_native/GeometryTests.csproj
+              dotnet run --project test/tizen_native/player/PlayerTests.csproj
+              TIZEN_AUTHOR_P12=/signing/author.p12 \
+              TIZEN_AUTHOR_PASSWORD_FILE=/signing/author.pwd \
+                scripts/tizen/build_signed.sh
+            '
+      - name: Remove the staged signing material
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/signing"
+      - name: Publish only inspected signed artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: plezy-tizen-6-tv-arm-signed
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            build/tizen-release/plezy-tizen-6-arm-release.tpk
+            build/tizen-release/inspection.json
+            build/tizen-release/SHA256SUMS
+      - name: Attach the package to the tagged release
+        if: startsWith(github.ref, 'refs/tags/tizen-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+            --title "$GITHUB_REF_NAME" \
+            --notes 'Sideload package for Tizen 6.0 TV (ARM32). Developer Mode is required; this is not a Samsung Store build.' \
+            build/tizen-release/plezy-tizen-6-arm-release.tpk \
+            build/tizen-release/inspection.json \
+            build/tizen-release/SHA256SUMS

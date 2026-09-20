@@ -13,7 +13,9 @@ on:
 jobs:
   resolve-release:
     # Packages track stable releases only. A skipped job also skips every job that needs it.
-    if: github.event_name != 'release' || !github.event.release.prerelease
+    if: >-
+      github.repository == 'edde746/plezy' &&
+      (github.event_name != 'release' || !github.event.release.prerelease)
     runs-on: ubuntu-latest
     permissions:
       contents: read

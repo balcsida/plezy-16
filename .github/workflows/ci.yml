@@ -24,6 +24,7 @@ env:
 
 jobs:
   analyze:
+    if: github.repository == 'edde746/plezy'
     name: Code Analysis
     runs-on: ubuntu-latest
     permissions:
@@ -105,6 +106,7 @@ jobs:
           fi
 
   test:
+    if: github.repository == 'edde746/plezy'
     name: Unit Tests
     runs-on: ubuntu-latest
     permissions:
@@ -164,6 +166,7 @@ jobs:
           done
 
   android-test:
+    if: github.repository == 'edde746/plezy'
     name: Android JVM and Native Tests
     runs-on: ubuntu-latest
     permissions:
@@ -233,6 +236,7 @@ jobs:
         run: ./gradlew :app:lintDebug
 
   native-format:
+    if: github.repository == 'edde746/plezy'
     name: Native Formatting
     runs-on: ubuntu-latest
     permissions:
@@ -253,6 +257,7 @@ jobs:
         run: scripts/format_native.sh --check
 
   linux-native-test:
+    if: github.repository == 'edde746/plezy'
     name: Linux native reliability (${{ matrix.sanitizer }})
     runs-on: ubuntu-latest
     permissions:
@@ -323,6 +328,7 @@ jobs:
             --output-on-failure --no-tests=error
 
   apple-native-test:
+    if: github.repository == 'edde746/plezy'
     name: Apple native reliability (${{ matrix.platform }})
     runs-on: macos-26
     permissions:
@@ -454,6 +460,7 @@ jobs:
             COMPILER_INDEX_STORE_ENABLE=NO
 
   windows-native-test:
+    if: github.repository == 'edde746/plezy'
     name: Windows native reliability (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
     permissions:
@@ -539,6 +546,7 @@ jobs:
           ctest --test-dir "$buildDir/runner" -C Debug --output-on-failure --no-tests=error
 
   dependency-check:
+    if: github.repository == 'edde746/plezy'
     name: Dependency Validation
     runs-on: ubuntu-latest
     permissions:
@@ -571,6 +579,7 @@ jobs:
           flutter pub outdated
 
   server:
+    if: github.repository == 'edde746/plezy'
     name: Server checks
     runs-on: ubuntu-latest
     permissions:
@@ -592,6 +601,7 @@ jobs:
 
 
   website:
+    if: github.repository == 'edde746/plezy'
     name: Website checks
     runs-on: ubuntu-latest
     permissions:
@@ -626,7 +636,9 @@ jobs:
   # way to exercise it before merging.
   linux-packages:
     name: Linux package smoke build
-    if: ${{ inputs.build_linux_packages || github.event_name == 'push' }}
+    if: >-
+      github.repository == 'edde746/plezy' &&
+      (inputs.build_linux_packages || github.event_name == 'push')
     runs-on: ubuntu-24.04
     permissions:
       contents: read
