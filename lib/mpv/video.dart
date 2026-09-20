@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'models.dart';
 import 'player/player.dart';
+import 'player/platform/player_tizen.dart';
 import 'player/video_rect_support.dart';
 
 /// Video widget for displaying player output.
@@ -123,6 +124,23 @@ class _VideoState extends State<Video> {
           // Video rendering area
           _buildVideoSurface(),
 
+          if (widget.player case final PlayerTizen player)
+            IgnorePointer(
+              child: Align(
+                alignment: const Alignment(0, 0.8),
+                child: ValueListenableBuilder<String>(
+                  valueListenable: player.caption,
+                  builder: (context, text, _) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 48),
+                    child: Text(
+                      text,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 28, color: Colors.white, backgroundColor: Colors.black87),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           // Controls overlay
           if (widget.controls != null) widget.controls!(context),
         ],

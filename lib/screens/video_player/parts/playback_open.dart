@@ -779,6 +779,7 @@ extension _VideoPlayerOpenMethods on VideoPlayerScreenState {
     required bool isTranscoding,
     required MediaVersion? selectedVersion,
   }) async {
+    if (PlatformDetector.isTizen()) return; // Native streaming, not ffmpeg/mpv.
     if (isNetworkVod) {
       // Covers network drops up to 10 min; applies to transcode streams too.
       //
