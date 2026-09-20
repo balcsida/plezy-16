@@ -1,0 +1,9 @@
+bin/
+obj/
+flutter/
+.app.deps.json
+*.tpk
+*.p12
+*.pfx
+profiles.xml
+*.csproj.user
