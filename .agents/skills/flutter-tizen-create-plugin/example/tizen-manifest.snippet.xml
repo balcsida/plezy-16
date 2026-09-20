@@ -1,0 +1,13 @@
+<!--
+  Privileges and features for an app consuming `foo_tizen`.
+  The host app's tizen-manifest.xml is what the OS evaluates at install
+  and runtime — plugin-level snippets are documentation for consumers.
+-->
+<privileges>
+  <!-- app_get_data_path itself needs no privilege; this block exists to
+       show where consumer apps add the entries documented in the
+       plugin README. -->
+</privileges>
+
+<!-- Optionally filter the store install on hardware features. -->
+<!-- <feature name="http://tizen.org/feature/network.internet"/> -->

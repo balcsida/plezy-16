@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Manifest skeleton showing the (profile, api-version) tuple per target.
+  Place inside tizen/tizen-manifest.xml at the project root.
+-->
+
+<!-- Samsung TV 2022 (Tizen 6.5) -->
+<manifest xmlns="http://tizen.org/ns/packages"
+          api-version="6.5"
+          package="com.example.demo"
+          version="1.0.0">
+  <profile name="tv"/>
+  <ui-application appid="com.example.demo" exec="Runner"
+                  type="capp" multiple="false" taskmanage="true"
+                  nodisplay="false" launch_mode="single">
+    <label>Demo</label>
+    <icon>default.png</icon>
+  </ui-application>
+</manifest>
+
+<!--
+  Common (RPi / IoT-Headed / phone via flutter-tizen): api-version="6.0"+
+       <profile name="common"/>
+  Tizen 10.x emulator (x64):                          api-version="10.0"
+-->

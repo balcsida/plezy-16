@@ -1,0 +1,11 @@
+<!--
+  Privileges + features for the geolocator + permission_handler combo.
+  Merge into tizen/tizen-manifest.xml.
+-->
+<privileges>
+  <privilege>http://tizen.org/privilege/location</privilege>
+  <privilege>http://tizen.org/privilege/internet</privilege>
+</privileges>
+
+<feature name="http://tizen.org/feature/location"/>
+<feature name="http://tizen.org/feature/network.internet"/>
