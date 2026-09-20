@@ -112,7 +112,9 @@ import 'utils/dialogs.dart';
 import 'widgets/dialog_action_button.dart';
 import 'widgets/startup_failure_view.dart';
 
-const bool _enableSentry = bool.fromEnvironment('ENABLE_SENTRY', defaultValue: false);
+// Tizen fork builds never send telemetry to the upstream project's DSN.
+const bool _enableSentry =
+    !bool.fromEnvironment('TIZEN_BUILD') && bool.fromEnvironment('ENABLE_SENTRY', defaultValue: false);
 const String _sentryDsn = 'https://6a1a6ef8c72140099b2798973c1bfb2f@bugs.plezy.app/1';
 const String gitCommit = String.fromEnvironment('GIT_COMMIT');
 const String _sentryEnvironment = String.fromEnvironment('SENTRY_ENVIRONMENT');
@@ -1050,18 +1052,18 @@ void _startNonessentialInitialization(SettingsService settings) {
 
   bestEffort('Native window', () {
     if (Platform.isAndroid) PipService();
-    NativeWindowService.initialize();
+    if (!PlatformDetector.isTizen()) NativeWindowService.initialize();
   });
 
   bestEffort('Fullscreen monitor', () async {
-    FullscreenStateManager().startMonitoring();
+    if (PlatformDetector.isDesktopOS()) FullscreenStateManager().startMonitoring();
     if (PlatformDetector.isDesktopOS() && settings.read(SettingsService.startInFullscreen)) {
       await FullscreenStateManager().enterFullscreen();
     }
   });
 
   bestEffort('Gamepad', () {
-    GamepadService.instance.start();
+    if (PlatformDetector.supportsGamepads()) GamepadService.instance.start();
     if (PlatformDetector.isAppleTV()) AppleTvRemoteTouchService.instance.start();
   });
 

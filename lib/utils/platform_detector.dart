@@ -215,16 +215,25 @@ class TvDetectionService {
 }
 
 class PlatformDetector {
+  // The embedder may identify as Linux; OS checks alone must not select mpv
+  // or desktop plugins. All supported Tizen entrypoints supply this define.
+  static const bool _tizen = bool.fromEnvironment('TIZEN_BUILD');
+  static bool isTizen() => _tizen;
+
   static bool isTV() {
-    return TvDetectionService.isTVSync();
+    return _tizen || TvDetectionService.isTVSync();
   }
 
   /// Whether the device itself is a TV, ignoring the force-TV layout setting.
   /// For what the system draws, such as the launcher; [isTV] decides the app's
   /// own layout.
   static bool isTVDevice() {
-    return TvDetectionService.isTVDeviceSync();
+    return _tizen || TvDetectionService.isTVDeviceSync();
   }
+
+  static bool supportsDownloads() => !_tizen;
+  static bool supportsGamepads() => !_tizen;
+  static bool supportsSystemMediaControls() => !_tizen;
 
   static bool isAppleTV() {
     return TvDetectionService.isAppleTVSync();
@@ -281,7 +290,7 @@ class PlatformDetector {
   /// BuildContext. Use for OS-level capability checks (window state, native
   /// keyboard, etc.); use [isDesktop] for layout decisions.
   static bool isDesktopOS() {
-    return _debugIsDesktopOSOverride ?? (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
+    return !_tizen && (_debugIsDesktopOSOverride ?? (Platform.isWindows || Platform.isMacOS || Platform.isLinux));
   }
 
   static bool? _debugIsDesktopOSOverride;
@@ -317,6 +326,7 @@ class PlatformDetector {
   }
 
   static bool supportsExternalPlayers() {
+    if (_tizen) return false;
     return Platform.isAndroid || Platform.isIOS || Platform.isMacOS || Platform.isLinux || Platform.isWindows;
   }
 
@@ -334,11 +344,12 @@ class PlatformDetector {
     // and the AVFoundation fallback in the ao list
     // (shared/apple/MpvPlayer/MpvPlayerCoreBase.swift) takes it. 2.14.0 pinned
     // CoreAudio alone, where a declined bitstream silenced playback instead.
-    return Platform.isIOS ||
-        Platform.isMacOS ||
-        Platform.isWindows ||
-        Platform.isLinux ||
-        (Platform.isAndroid && isTV());
+    return !_tizen &&
+        (Platform.isIOS ||
+            Platform.isMacOS ||
+            Platform.isWindows ||
+            Platform.isLinux ||
+            (Platform.isAndroid && isTV()));
   }
 
   static bool supportsPictureInPicture() => pictureInPictureAllowed(

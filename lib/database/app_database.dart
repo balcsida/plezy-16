@@ -4,6 +4,8 @@ import 'dart:io';
 import '../media/ids.dart';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:drift_sqflite/drift_sqflite.dart';
+import '../utils/platform_detector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
@@ -94,7 +96,7 @@ class AppDatabase extends _$AppDatabase {
     if (!await file.parent.exists()) {
       await file.parent.create(recursive: true);
     }
-    if (databaseFile == null && !Platform.isAndroid && !Platform.isIOS && !await file.exists()) {
+    if (databaseFile == null && PlatformDetector.isDesktopOS() && !await file.exists()) {
       await migrateLegacyDesktopDatabase(target: file);
     }
 
@@ -380,6 +382,10 @@ class AppDatabase extends _$AppDatabase {
       // queries — also applies to in-memory test databases that don't go
       // through `_openConnection`.
       beforeOpen: (details) async {
+        if (PlatformDetector.isTizen()) {
+          await customStatement('PRAGMA journal_mode=WAL');
+          await customStatement('PRAGMA synchronous=NORMAL');
+        }
         await customStatement('PRAGMA foreign_keys = ON');
       },
       onCreate: (Migrator m) async {
@@ -1449,6 +1455,11 @@ Future<void> _removeOrphanedDatabaseSidecars(File databaseFile) async {
 }
 
 QueryExecutor _createNativeDatabase(File file) {
+  if (PlatformDetector.isTizen()) {
+    // The registered Tizen sqflite plugin owns SQLite, not a desktop FFI binary.
+    // Drift still owns the exact same schema, migrations and transactions.
+    return SqfliteQueryExecutor(path: file.path, singleInstance: false);
+  }
   return NativeDatabase.createInBackground(
     file,
     setup: (db) {

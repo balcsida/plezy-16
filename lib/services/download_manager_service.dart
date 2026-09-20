@@ -240,14 +240,16 @@ class DownloadManagerService {
   int _consecutiveQueueFailures = 0;
   static const _maxConsecutiveFailures = 3;
 
-  static bool get platformDownloadsSupported => downloadsSupportedFor(tvosBuild: _tvosBuild);
+  static bool get platformDownloadsSupported =>
+      downloadsSupportedFor(tvosBuild: _tvosBuild, tizenBuild: const bool.fromEnvironment('TIZEN_BUILD'));
 
   @visibleForTesting
-  static bool downloadsSupportedFor({required bool tvosBuild}) => !tvosBuild;
+  static bool downloadsSupportedFor({required bool tvosBuild, bool tizenBuild = false}) => !tvosBuild && !tizenBuild;
 
   /// Cancels native work and discards resumable partial files so startup can
   /// recover enough space to reopen the application database.
   static Future<void> discardInterruptedNativeDownloadsAfterStorageFailure() async {
+    if (!platformDownloadsSupported) return;
     final downloader = FileDownloader();
     try {
       await downloader.reset(group: _downloadGroup);

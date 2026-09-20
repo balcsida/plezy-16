@@ -322,7 +322,9 @@ mixin _JellyfinPlaybackMethods on _JellyfinClientInternals {
           (track) =>
               track.id == effectiveSubtitleStreamId &&
               track.isExternalFile &&
-              CodecUtils.isTextSubtitleCodec(track.codec),
+              CodecUtils.isTextSubtitleCodec(track.codec) &&
+              (!PlatformDetector.isTizen() ||
+                  ['srt', 'vtt'].contains(CodecUtils.getSubtitleExtension(track.codec ?? ''))),
         );
     final int? maxStreamingBitrate = wantsOriginal
         ? null
@@ -331,7 +333,8 @@ mixin _JellyfinPlaybackMethods on _JellyfinClientInternals {
         ? audioPreset.bitrateKbps! * 1000
         : (preset.videoBitrateKbps ?? 100_000) * 1000;
     final resumeOffsetMs = metadata.viewOffsetMs;
-    final int? transcodeStartTimeTicks = !wantsOriginal && resumeOffsetMs != null && resumeOffsetMs > 0
+    final int? transcodeStartTimeTicks =
+        (!wantsOriginal || PlatformDetector.isTizen()) && resumeOffsetMs != null && resumeOffsetMs > 0
         ? msToJellyfinTicks(resumeOffsetMs)
         : null;
     Map<String, dynamic>? negotiation;
@@ -349,7 +352,7 @@ mixin _JellyfinPlaybackMethods on _JellyfinClientInternals {
         // burns the selected embedded stream in rather than serving it as a file the client
         // would fetch as well. A selected external *file* keeps `External`, so it is still
         // delivered as a file - the one case where the client genuinely holds it.
-        burnSubtitles: !wantsOriginal && !requestedSubtitleIsExternalFile,
+        burnSubtitles: (!wantsOriginal || PlatformDetector.isTizen()) && !requestedSubtitleIsExternalFile,
       );
       chosenSource = _selectNegotiatedMediaSource(negotiation['MediaSources'], bundle.selectedSourceId);
     } catch (error, stackTrace) {
@@ -364,6 +367,7 @@ mixin _JellyfinPlaybackMethods on _JellyfinClientInternals {
     }
 
     if (chosenSource == null) {
+      if (PlatformDetector.isTizen()) throw StateError('No compatible Jellyfin playback source');
       fallbackReason = TranscodeFallbackReason.decisionFailed;
       appLogger.w('Jellyfin playback negotiation returned no usable source; using the static stream');
     } else {
@@ -381,7 +385,9 @@ mixin _JellyfinPlaybackMethods on _JellyfinClientInternals {
       }
 
       final transcodingUrl = chosenSource['TranscodingUrl'];
-      if (!wantsOriginal && transcodingUrl is String && transcodingUrl.isNotEmpty) {
+      final needsCompatibleStream =
+          !wantsOriginal || (PlatformDetector.isTizen() && chosenSource['SupportsDirectPlay'] != true);
+      if (needsCompatibleStream && transcodingUrl is String && transcodingUrl.isNotEmpty) {
         // TranscodingUrl is server-relative and already encodes container,
         // codecs, MediaSourceId, and PlaySessionId; we just append the
         // dialect's token query parameter for auth.
@@ -393,10 +399,11 @@ mixin _JellyfinPlaybackMethods on _JellyfinClientInternals {
         videoUrl = _withApiKey(transcodingUrl);
         playMethod = 'Transcode';
         isTranscoding = true;
-      } else if (!wantsOriginal && chosenSource['SupportsDirectPlay'] != true) {
+      } else if (needsCompatibleStream && chosenSource['SupportsDirectPlay'] != true) {
         // No transcode is only a refusal when the server also declined direct
         // play. A file that already fits the cap direct-plays with no
         // `TranscodingUrl`, which is the capped request succeeding.
+        if (PlatformDetector.isTizen()) throw StateError('Jellyfin could not provide a compatible transcode');
         fallbackReason = TranscodeFallbackReason.directPlayOnly;
       }
     }
@@ -633,7 +640,7 @@ mixin _JellyfinPlaybackMethods on _JellyfinClientInternals {
     // `subrip` and WebVTT ones `webvtt`, so the raw name would ask for `Stream.subrip` and get
     // nothing. Only load-bearing since extracted rows without a `DeliveryUrl` started coming
     // through here.
-    final extension = CodecUtils.getSubtitleExtension(codec);
+    final extension = PlatformDetector.isTizen() ? 'vtt' : CodecUtils.getSubtitleExtension(codec);
     final path = Uri(
       pathSegments: ['Videos', itemId, sourceId, 'Subtitles', streamIndex.toString(), 'Stream.$extension'],
     ).path;
@@ -665,9 +672,11 @@ mixin _JellyfinPlaybackMethods on _JellyfinClientInternals {
     for (final track in mediaInfo.subtitleTracks) {
       if (burnedSourceStreamId != null && track.id == burnedSourceStreamId) continue;
       final isText = CodecUtils.isTextSubtitleCodec(track.codec);
-      if (isTranscoding && !isText) continue;
+      if ((isTranscoding || PlatformDetector.isTizen()) && !isText) continue;
       if (!track.isExternalFile && !isTranscoding) continue;
-      final path = track.key ?? _jellyfinSubtitleFallbackPath(itemId, mediaSourceId, track);
+      final path = PlatformDetector.isTizen()
+          ? _jellyfinSubtitleFallbackPath(itemId, mediaSourceId, track)
+          : track.key ?? _jellyfinSubtitleFallbackPath(itemId, mediaSourceId, track);
       if (path == null) continue;
       // Jellyfin's subtitle URL is a path relative to baseUrl; build the
       // absolute URL with the dialect's token query parameter.
@@ -688,7 +697,7 @@ mixin _JellyfinPlaybackMethods on _JellyfinClientInternals {
                 cleanSubtitleTitle(track.displayTitle ?? track.title, codec: track.codec) ??
                 cleanTrackMetadataValue(track.language),
             language: cleanTrackMetadataValue(track.languageCode),
-            codec: track.codec,
+            codec: PlatformDetector.isTizen() ? 'webvtt' : track.codec,
             isDefault: track.selected,
             isForced: track.forced,
           ),
@@ -916,122 +925,124 @@ mixin _JellyfinPlaybackMethods on _JellyfinClientInternals {
       body: {
         'UserId': connection.userId,
         ...negotiation,
-        'DeviceProfile': <String, Object?>{
-          'Name': 'Plezy',
-          'MaxStreamingBitrate': ?maxStreamingBitrate,
-          'CodecProfiles': const <Map<String, Object?>>[],
-          // fMP4 segments instead of MPEG-TS (#2131): ts cannot carry AV1,
-          // so a server with an AV1 hardware encoder could never pick it.
-          // Every mpv backend already consumes fMP4 HLS — the Plex VOD
-          // target has shipped it since issue #1859.
-          'TranscodingProfiles': <Map<String, Object?>>[
-            if (!isLiveTv || !dialect.requiresMpegTsForLiveTv)
-              {
-                'Type': 'Video',
-                'Container': 'mp4',
-                'Protocol': 'hls',
-                'VideoCodec': _jellyfinTranscodeVideoCodecs(dialect),
-                // Every audio codec Jellyfin can put in an fMP4 segment, so a
-                // transcode forced by the video stream can still copy the audio
-                // instead of re-encoding it; AAC leads because it is the only
-                // entry the server can reliably encode to. Two silent traps:
-                // the server validates this against `^[a-zA-Z0-9\-\._,|]{0,40}$`
-                // when it echoes the list into the transcode URL, so `alac` does
-                // not fit and `*` is not a wildcard; and omitting the key is not
-                // "accept everything" the way it is for a direct-play profile —
-                // the server substitutes the source codec, filters it against
-                // the same fMP4 set, and ships no audio at all for a source it
-                // cannot carry.
-                'AudioCodec': 'aac,mp3,ac3,eac3,flac,opus,dts,truehd',
+        'DeviceProfile': PlatformDetector.isTizen()
+            ? tizenDeviceProfile(burnSubtitles: burnSubtitles, maxStreamingBitrate: maxStreamingBitrate)
+            : <String, Object?>{
+                'Name': 'Plezy',
+                'MaxStreamingBitrate': ?maxStreamingBitrate,
+                'CodecProfiles': const <Map<String, Object?>>[],
+                // fMP4 segments instead of MPEG-TS (#2131): ts cannot carry AV1,
+                // so a server with an AV1 hardware encoder could never pick it.
+                // Every mpv backend already consumes fMP4 HLS — the Plex VOD
+                // target has shipped it since issue #1859.
+                'TranscodingProfiles': <Map<String, Object?>>[
+                  if (!isLiveTv || !dialect.requiresMpegTsForLiveTv)
+                    {
+                      'Type': 'Video',
+                      'Container': 'mp4',
+                      'Protocol': 'hls',
+                      'VideoCodec': _jellyfinTranscodeVideoCodecs(dialect),
+                      // Every audio codec Jellyfin can put in an fMP4 segment, so a
+                      // transcode forced by the video stream can still copy the audio
+                      // instead of re-encoding it; AAC leads because it is the only
+                      // entry the server can reliably encode to. Two silent traps:
+                      // the server validates this against `^[a-zA-Z0-9\-\._,|]{0,40}$`
+                      // when it echoes the list into the transcode URL, so `alac` does
+                      // not fit and `*` is not a wildcard; and omitting the key is not
+                      // "accept everything" the way it is for a direct-play profile —
+                      // the server substitutes the source codec, filters it against
+                      // the same fMP4 set, and ships no audio at all for a source it
+                      // cannot carry.
+                      'AudioCodec': 'aac,mp3,ac3,eac3,flac,opus,dts,truehd',
+                    },
+                  // MPEG-TS is the only Emby Live TV target (#2273); otherwise it
+                  // stays second as Jellyfin's fallback (#2198). Jellyfin drops every
+                  // non-ts transcoding profile for a live source with
+                  // `UseMostCompatibleTranscodingProfile` — hardcoded true for
+                  // HDHomeRun tuners, default true for M3U tuners — so with fMP4
+                  // alone Live TV negotiates no HLS URL at all. Both codec lists
+                  // are strict subsets of the fMP4 entry's, and the server ranks
+                  // profiles with a stable sort, so ts can only win when the fMP4
+                  // entry has been filtered out: VOD keeps negotiating fMP4
+                  // (jellyfin-web ships the same mp4-then-ts pair). flac and
+                  // truehd are omitted because TS cannot carry them.
+                  {
+                    'Type': 'Video',
+                    'Container': 'ts',
+                    'Protocol': 'hls',
+                    'VideoCodec': _jellyfinTranscodeVideoCodecsTs(),
+                    'AudioCodec': 'aac,mp3,ac3,eac3,opus,dts',
+                  },
+                  // Track playback transcode target: stereo mp3 over plain http.
+                  // Appended after the video profile so the first-entry-wins
+                  // ordering for video output codecs is untouched.
+                  if (audioProfile)
+                    const {
+                      'Type': 'Audio',
+                      'Container': 'mp3',
+                      'AudioCodec': 'mp3',
+                      'Protocol': 'http',
+                      'Context': 'Streaming',
+                      'MaxAudioChannels': '2',
+                    },
+                ],
+                'DirectPlayProfiles': <Map<String, Object?>>[
+                  {
+                    'Type': 'Video',
+                    'Container': 'mp4,mkv,m4v,webm,mov,ts,mpegts',
+                    'VideoCodec': _jellyfinDirectPlayVideoCodecs(),
+                    // No `AudioCodec`: an omitted list means "any codec" to
+                    // Jellyfin. mpv decodes every audio codec these containers can
+                    // carry and an audio decode is cheap everywhere, so an audio
+                    // stream must never be the reason a file cannot direct-play.
+                  },
+                  // Music containers/codecs mpv plays natively everywhere. This one
+                  // keeps its `AudioCodec` because Jellyfin falls back to the
+                  // container list for `Type: Audio`, and a multi-container entry is
+                  // not a codec name.
+                  if (audioProfile)
+                    const {
+                      'Type': 'Audio',
+                      'Container': 'flac,mp3,ogg,oga,opus,m4a,m4b,aac,alac,wav,aiff,wma,webma',
+                      'AudioCodec': 'flac,mp3,aac,alac,opus,vorbis,wav,wma',
+                    },
+                ],
+                // `Embed` covers direct play and an mkv remux, where the native
+                // player reads the subtitle stream straight out of the container.
+                // Jellyfin only offers it when the delivered container can carry
+                // subtitles, so it is unreachable on an HLS transcode (ts/mp4) and
+                // is listed for every format purely for the direct paths.
+                //
+                // `External` asks the server to extract a stream and serve it as a
+                // subtitle file. It is offered only when the caller is not asking for
+                // a transcode: on a transcode the owner decision is that the server
+                // delivers the picture complete, so every subtitle is burned in and
+                // the client fetches nothing alongside it. Jellyfin matches an
+                // external profile by text-vs-image format and never consults whether
+                // the stream is embedded or a real file, so the list cannot express
+                // "files as files, embedded burned" - offering text `External` at all
+                // is what made embedded text arrive as a sidecar.
+                //
+                // With no matching `External` entry the server finds no external
+                // profile and falls through to `Encode`, which is also why image
+                // formats never appear here: a bitmap handed over as a separate
+                // stream alongside a transcode is not something the client can render.
+                'SubtitleProfiles': <Map<String, Object?>>[
+                  const {'Format': 'srt', 'Method': 'Embed'},
+                  const {'Format': 'ass', 'Method': 'Embed'},
+                  const {'Format': 'ssa', 'Method': 'Embed'},
+                  const {'Format': 'vtt', 'Method': 'Embed'},
+                  const {'Format': 'pgssub', 'Method': 'Embed'},
+                  const {'Format': 'dvdsub', 'Method': 'Embed'},
+                  const {'Format': 'dvbsub', 'Method': 'Embed'},
+                  if (!burnSubtitles) ...const [
+                    {'Format': 'srt', 'Method': 'External'},
+                    {'Format': 'ass', 'Method': 'External'},
+                    {'Format': 'ssa', 'Method': 'External'},
+                    {'Format': 'vtt', 'Method': 'External'},
+                  ],
+                ],
               },
-            // MPEG-TS is the only Emby Live TV target (#2273); otherwise it
-            // stays second as Jellyfin's fallback (#2198). Jellyfin drops every
-            // non-ts transcoding profile for a live source with
-            // `UseMostCompatibleTranscodingProfile` — hardcoded true for
-            // HDHomeRun tuners, default true for M3U tuners — so with fMP4
-            // alone Live TV negotiates no HLS URL at all. Both codec lists
-            // are strict subsets of the fMP4 entry's, and the server ranks
-            // profiles with a stable sort, so ts can only win when the fMP4
-            // entry has been filtered out: VOD keeps negotiating fMP4
-            // (jellyfin-web ships the same mp4-then-ts pair). flac and
-            // truehd are omitted because TS cannot carry them.
-            {
-              'Type': 'Video',
-              'Container': 'ts',
-              'Protocol': 'hls',
-              'VideoCodec': _jellyfinTranscodeVideoCodecsTs(),
-              'AudioCodec': 'aac,mp3,ac3,eac3,opus,dts',
-            },
-            // Track playback transcode target: stereo mp3 over plain http.
-            // Appended after the video profile so the first-entry-wins
-            // ordering for video output codecs is untouched.
-            if (audioProfile)
-              const {
-                'Type': 'Audio',
-                'Container': 'mp3',
-                'AudioCodec': 'mp3',
-                'Protocol': 'http',
-                'Context': 'Streaming',
-                'MaxAudioChannels': '2',
-              },
-          ],
-          'DirectPlayProfiles': <Map<String, Object?>>[
-            {
-              'Type': 'Video',
-              'Container': 'mp4,mkv,m4v,webm,mov,ts,mpegts',
-              'VideoCodec': _jellyfinDirectPlayVideoCodecs(),
-              // No `AudioCodec`: an omitted list means "any codec" to
-              // Jellyfin. mpv decodes every audio codec these containers can
-              // carry and an audio decode is cheap everywhere, so an audio
-              // stream must never be the reason a file cannot direct-play.
-            },
-            // Music containers/codecs mpv plays natively everywhere. This one
-            // keeps its `AudioCodec` because Jellyfin falls back to the
-            // container list for `Type: Audio`, and a multi-container entry is
-            // not a codec name.
-            if (audioProfile)
-              const {
-                'Type': 'Audio',
-                'Container': 'flac,mp3,ogg,oga,opus,m4a,m4b,aac,alac,wav,aiff,wma,webma',
-                'AudioCodec': 'flac,mp3,aac,alac,opus,vorbis,wav,wma',
-              },
-          ],
-          // `Embed` covers direct play and an mkv remux, where the native
-          // player reads the subtitle stream straight out of the container.
-          // Jellyfin only offers it when the delivered container can carry
-          // subtitles, so it is unreachable on an HLS transcode (ts/mp4) and
-          // is listed for every format purely for the direct paths.
-          //
-          // `External` asks the server to extract a stream and serve it as a
-          // subtitle file. It is offered only when the caller is not asking for
-          // a transcode: on a transcode the owner decision is that the server
-          // delivers the picture complete, so every subtitle is burned in and
-          // the client fetches nothing alongside it. Jellyfin matches an
-          // external profile by text-vs-image format and never consults whether
-          // the stream is embedded or a real file, so the list cannot express
-          // "files as files, embedded burned" - offering text `External` at all
-          // is what made embedded text arrive as a sidecar.
-          //
-          // With no matching `External` entry the server finds no external
-          // profile and falls through to `Encode`, which is also why image
-          // formats never appear here: a bitmap handed over as a separate
-          // stream alongside a transcode is not something the client can render.
-          'SubtitleProfiles': <Map<String, Object?>>[
-            const {'Format': 'srt', 'Method': 'Embed'},
-            const {'Format': 'ass', 'Method': 'Embed'},
-            const {'Format': 'ssa', 'Method': 'Embed'},
-            const {'Format': 'vtt', 'Method': 'Embed'},
-            const {'Format': 'pgssub', 'Method': 'Embed'},
-            const {'Format': 'dvdsub', 'Method': 'Embed'},
-            const {'Format': 'dvbsub', 'Method': 'Embed'},
-            if (!burnSubtitles) ...const [
-              {'Format': 'srt', 'Method': 'External'},
-              {'Format': 'ass', 'Method': 'External'},
-              {'Format': 'ssa', 'Method': 'External'},
-              {'Format': 'vtt', 'Method': 'External'},
-            ],
-          ],
-        },
       },
     );
     throwIfHttpError(response);

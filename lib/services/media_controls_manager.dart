@@ -11,6 +11,7 @@ import '../media/media_item.dart';
 import '../media/media_item_types.dart';
 import '../media/media_kind.dart';
 import '../utils/app_logger.dart';
+import '../utils/platform_detector.dart';
 import 'image_cache_service.dart';
 
 /// Manages OS media controls integration for video playback.
@@ -21,7 +22,9 @@ import 'image_cache_service.dart';
 /// - Control event streaming (play, pause, next, previous, seek)
 /// - Position update throttling to prevent excessive API calls
 class MediaControlsManager {
-  Stream<MediaControlEvent> get controlEvents => OsMediaControls.controlEvents;
+  /// Stream of control events from OS media controls
+  Stream<MediaControlEvent> get controlEvents =>
+      PlatformDetector.supportsSystemMediaControls() ? OsMediaControls.controlEvents : const Stream.empty();
 
   /// Throttled playback state update (1 second interval, leading + trailing)
   late final Throttle _throttledUpdate;
@@ -35,7 +38,7 @@ class MediaControlsManager {
   bool? _lastCanSkip;
   bool? _lastCanSetSpeed;
   Duration? _lastSkipInterval;
-  bool _updatesSuspended = false;
+  bool _updatesSuspended = !PlatformDetector.supportsSystemMediaControls();
 
   /// Bumped by every metadata update and [clear], so artwork bytes that
   /// arrive late never land on a newer item or a cleared session.
@@ -260,6 +263,7 @@ class MediaControlsManager {
   /// keeps audio alive with a `mediaPlayback` foreground service and shows a
   /// MediaStyle notification for the session. No-op on other platforms.
   Future<void> setBackgroundMode(bool enabled) async {
+    if (!PlatformDetector.supportsSystemMediaControls()) return;
     try {
       await OsMediaControls.setBackgroundMode(enabled);
       appLogger.d('Media controls background mode: $enabled');
@@ -273,6 +277,7 @@ class MediaControlsManager {
   /// Should be called when playback stops or screen is disposed.
   Future<void> clear() async {
     _metadataGeneration++;
+    if (!PlatformDetector.supportsSystemMediaControls()) return;
     try {
       await OsMediaControls.clear();
       _throttledUpdate.cancel();
@@ -298,6 +303,7 @@ class MediaControlsManager {
   }
 
   void resumeUpdates() {
+    if (!PlatformDetector.supportsSystemMediaControls()) return;
     if (!_updatesSuspended) return;
     _updatesSuspended = false;
     appLogger.d('Media controls updates resumed');

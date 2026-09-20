@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:device_info_plus_tizen/device_info_plus_tizen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:unorm_dart/unorm_dart.dart';
 
@@ -51,6 +52,10 @@ class DeviceIdentityService {
     final isTv = PlatformDetector.isTV();
 
     try {
+      if (PlatformDetector.isTizen()) {
+        final info = await DeviceInfoPluginTizen().tizenInfo;
+        return DeviceIdentity(platform: 'Tizen', deviceModel: info.modelName, deviceName: info.modelName, isTv: true);
+      }
       if (Platform.isAndroid) {
         final androidInfo = await deviceInfo.androidInfo;
         final assignedName = await TvDetectionService.getAndroidDeviceName();
@@ -95,7 +100,7 @@ class DeviceIdentityService {
       appLogger.w('DeviceIdentity: failed to resolve device info', error: e);
     }
 
-    return DeviceIdentity(platform: Platform.operatingSystem, isTv: isTv);
+    return DeviceIdentity(platform: PlatformDetector.isTizen() ? 'Tizen' : Platform.operatingSystem, isTv: isTv);
   }
 }
 

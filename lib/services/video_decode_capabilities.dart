@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../utils/async_singleton.dart';
 import '../utils/device_channel.dart';
+import '../utils/platform_detector.dart';
 import 'settings_service.dart';
 
 /// The video codecs Plezy negotiates with a media server, most efficient
@@ -70,6 +71,7 @@ class VideoDecodeCapabilities {
       _singleton.getInstance(VideoDecodeCapabilities._, (instance) => instance._detect());
 
   Future<void> _detect() async {
+    if (PlatformDetector.isTizen()) return;
     try {
       final result = await deviceChannel.invokeMapMethod<String, dynamic>('getVideoDecodeCapabilities');
       if (result == null) return;
@@ -87,8 +89,8 @@ class VideoDecodeCapabilities {
     if (isRefusedByUser(codec)) return false;
     final instance = _singleton.instance;
     return switch (codec) {
-      RankedVideoCodec.av1 => instance?._hardwareAv1 ?? true,
-      RankedVideoCodec.hevc => instance?._hardwareHevc ?? true,
+      RankedVideoCodec.av1 => !PlatformDetector.isTizen() && (instance?._hardwareAv1 ?? true),
+      RankedVideoCodec.hevc => !PlatformDetector.isTizen() && (instance?._hardwareHevc ?? true),
       RankedVideoCodec.h264 => true,
     };
   }
@@ -112,6 +114,7 @@ class VideoDecodeCapabilities {
   /// ` refused=hevc` appended when the user refused a codec. Answers "did
   /// this device really report an AV1 decoder" when a transcode stutters.
   static String describeSync() {
+    if (PlatformDetector.isTizen()) return 'unprobed; conservative H.264/AAC policy';
     final instance = _singleton.instance;
     if (instance == null) return 'unknown';
     final hevc = instance._hardwareHevc;
