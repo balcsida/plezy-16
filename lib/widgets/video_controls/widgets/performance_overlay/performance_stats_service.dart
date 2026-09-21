@@ -199,6 +199,21 @@ class PerformanceStatsService {
         uiFps: _currentUiFps,
       );
       _emit(stats);
+    } else if (playerType == 'tizen') {
+      // The Capi backend decodes on the TV's own SoC, outside Flutter, and
+      // exposes no decoder name, hwdec state or frame counters. Report only
+      // what it actually returns; every other metric stays null so the
+      // overlay prints N/A rather than inventing a value. Without this branch
+      // Tizen fell through to the ExoPlayer parse below, which labelled the
+      // backend "ExoPlayer" and left hwdec null - read as "Software".
+      final stats = PerformanceStats(
+        playerType: 'tizen',
+        videoWidth: statsMap['videoWidth'] as int?,
+        videoHeight: statsMap['videoHeight'] as int?,
+        appMemoryBytes: appMemory,
+        uiFps: _currentUiFps,
+      );
+      _emit(stats);
     } else {
       // Parse ExoPlayer stats format
       final stats = PerformanceStats(

@@ -335,4 +335,31 @@ void main() {
       expect(stats.hasDvPlaybackPath, isFalse);
     });
   });
+
+  group('a backend that decodes outside the app', () {
+    test('Tizen reports itself, not ExoPlayer', () async {
+      final stats = await _firstStats(
+        _NativeStatsPlayer({'playerType': 'tizen', 'videoWidth': 1920, 'videoHeight': 1080}),
+      );
+
+      expect(stats.playerType, 'tizen');
+      expect(stats.playerTypeFormatted, 'Tizen');
+      expect(stats.videoWidth, 1920);
+      // Falling through to the ExoPlayer parse used to invent these.
+      expect(stats.videoDecoderName, isNull);
+    });
+
+    test('no hwdec signal reads as unavailable, never as software', () {
+      // The Capi plane exposes no hwdec state. Claiming software decoding
+      // there asserts a measurement nobody took.
+      const stats = PerformanceStats(playerType: 'tizen');
+      expect(stats.hwdecFormatted, isNot(t.performanceOverlay.decoderSoftware));
+      expect(stats.hwdecFormatted, t.common.notAvailable);
+    });
+
+    test("mpv's own 'no' is still real evidence of software decoding", () {
+      const stats = PerformanceStats(playerType: 'mpv', hwdecCurrent: 'no');
+      expect(stats.hwdecFormatted, t.performanceOverlay.decoderSoftware);
+    });
+  });
 }

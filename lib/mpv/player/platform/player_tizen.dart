@@ -315,7 +315,6 @@ class PlayerTizen extends PlayerBase with VideoRectSupport {
     'videoWidth': _width,
     'videoHeight': _height,
     'playerType': 'tizen',
-    'videoDecoder': 'unknown',
   };
   @override
   Future<String?> getProperty(String name) async => switch (name) {

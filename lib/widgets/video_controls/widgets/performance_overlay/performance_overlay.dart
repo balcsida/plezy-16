@@ -72,6 +72,10 @@ class _PlayerPerformanceOverlayState extends State<PlayerPerformanceOverlay> {
   @override
   Widget build(BuildContext context) {
     final isMpv = _stats.playerType == 'mpv';
+    // `!isMpv` used to mean ExoPlayer, back when those were the only two
+    // backends. Tizen is a third, and these metrics are ExoPlayer's alone, so
+    // ask for it by name rather than by elimination.
+    final isExo = _stats.playerType == 'exoplayer';
 
     final sections = <Widget>[
       _buildSection(Symbols.videocam_rounded, t.fileInfo.video, [
@@ -80,8 +84,8 @@ class _PlayerPerformanceOverlayState extends State<PlayerPerformanceOverlay> {
         if (_stats.hasValidVideoFps) _metric(t.performanceOverlay.fps, _stats.videoFpsFormatted),
         if (_stats.hasValidVideoBitrate) _metric(t.fileInfo.bitrate, _stats.videoBitrateFormatted),
         _metric(t.performanceOverlay.decoder, _stats.hwdecFormatted),
-        if (!isMpv && _stats.videoDecoderName != null) _metric(t.performanceOverlay.rawDecoder, _stats.videoDecoderRaw),
-        if (!isMpv) _metric(t.performanceOverlay.tunneling, _stats.tunneledPlaybackFormatted),
+        if (isExo && _stats.videoDecoderName != null) _metric(t.performanceOverlay.rawDecoder, _stats.videoDecoderRaw),
+        if (isExo) _metric(t.performanceOverlay.tunneling, _stats.tunneledPlaybackFormatted),
         if (_stats.aspectName != null && _stats.aspectName!.isNotEmpty)
           _metric(t.performanceOverlay.aspect, _stats.aspectName!),
         if (_stats.rotate != null && _stats.rotate != 0) _metric(t.performanceOverlay.rotation, _stats.rotateFormatted),
@@ -95,7 +99,7 @@ class _PlayerPerformanceOverlayState extends State<PlayerPerformanceOverlay> {
         _metric(t.performanceOverlay.sampleRate, _stats.sampleRateFormatted),
         _metric(t.fileInfo.channels, _stats.audioChannels ?? t.common.notAvailable),
         if (_stats.hasValidAudioBitrate) _metric(t.fileInfo.bitrate, _stats.audioBitrateFormatted),
-        if (!isMpv && _stats.audioDecoderName != null)
+        if (isExo && _stats.audioDecoderName != null)
           _metric(t.performanceOverlay.decoder, _stats.audioDecoderFormatted),
       ]),
       if (isMpv)

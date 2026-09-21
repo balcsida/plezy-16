@@ -291,10 +291,13 @@ class PerformanceStats {
       }
       return t.performanceOverlay.decoderSoftware;
     }
-    // For MPV, use hwdec-current property
-    if (hwdecCurrent == null || hwdecCurrent!.isEmpty || hwdecCurrent == 'no') {
-      return t.performanceOverlay.decoderSoftware;
-    }
+    // For MPV, use hwdec-current property. Only mpv's own `no` is evidence of
+    // software decoding; an absent or empty value means the backend never told
+    // us, which is not the same claim. Backends that decode outside the app
+    // (Tizen's Capi plane) never report one, and asserting "Software" there is
+    // the exact error ACCEPTANCE.md forbids in the other direction.
+    if (hwdecCurrent == 'no') return t.performanceOverlay.decoderSoftware;
+    if (hwdecCurrent == null || hwdecCurrent!.isEmpty) return t.common.notAvailable;
     return hwdecCurrent!;
   }
 
@@ -418,6 +421,7 @@ class PerformanceStats {
     return switch (playerType.toLowerCase()) {
       'mpv' => 'MPV',
       'exoplayer' => 'ExoPlayer',
+      'tizen' => 'Tizen',
       _ => playerType,
     };
   }
