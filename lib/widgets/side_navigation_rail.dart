@@ -501,7 +501,9 @@ class SideNavigationRailState extends State<SideNavigationRail> with MountedSetS
   bool get _showDownloads => !PlatformDetector.isAppleTV();
 
   /// macOS has the system green button; mobile/TV have no OS fullscreen toggle.
-  bool get _showFullscreenToggle => Platform.isWindows || Platform.isLinux;
+  /// Asked through [PlatformDetector.isDesktopOS] so Tizen — a Linux that is a
+  /// TV — is excluded here the same way it is everywhere else.
+  bool get _showFullscreenToggle => PlatformDetector.isDesktopOS() && !Platform.isMacOS;
 
   @override
   void initState() {
