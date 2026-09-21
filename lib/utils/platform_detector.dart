@@ -235,6 +235,17 @@ class PlatformDetector {
   static bool supportsGamepads() => !_tizen;
   static bool supportsSystemMediaControls() => !_tizen;
 
+  /// Whether the mpv-backed playback tuning settings mean anything here.
+  ///
+  /// Tizen plays through the native Capi backend, and `PlayerTizen.setProperty`
+  /// rejects every mpv option but `pause` and `sub-visibility`. The settings
+  /// that exist only to reach mpv — the `mpv.conf` editor, `hwdec`, the
+  /// deinterlace and downmix filters and `volume-max` — have nothing to act on:
+  /// `VideoPlayerScreen` already skips the whole property-writing block there,
+  /// so the screen settings are inert, and the in-player toggles fail their
+  /// write and snap back.
+  static bool supportsMpvTuning() => !_tizen;
+
   static bool isAppleTV() {
     return TvDetectionService.isAppleTVSync();
   }
