@@ -143,6 +143,23 @@ channels for device evidence.
 - Signing now uses a preserved author key held outside the repository, so upgrades
   install in place. Losing it would again force a reinstall; it is the operator's
   to back up. The per-session disposable authors are no longer used for the TV.
+- The first CI-built signed package was installed from the published
+  pre-release `tizen-v2.20.1-rc2`, rather than from a local build. Release
+  asset TPK SHA-256
+  `a76d6153c85c5c82b1d8997a91c8841c3af39df79fd8eca6a25130a89ff8c61e`,
+  source-input SHA-256
+  `5f2d240394068e19ce13d94b9c29969d3cb1df79bd2e14047af91aa80e2dff82`,
+  source revision `16b0ae89c604648b566a4345b3baace35b402d17`, clean tree.
+  The hash was checked against `SHA256SUMS` at every hop, including inside the
+  deploy container immediately before installation. SDK SDB 4.2.36 reported
+  `install completed` as an in-place signed upgrade over the previous build:
+  no uninstall, no app data cleared. Launch was accepted.
+- With that build the operator confirmed both that the sidebar no longer offers
+  a fullscreen toggle and that playback works. Retail `sdbd` refuses arbitrary
+  shell verbs, so process liveness was not confirmed from the CLI; only
+  `applist` and `was_execute` are available, and the observation is the
+  operator's. This is functional confirmation by observation, not a measured
+  benchmark, and it does not close the device-matrix rows.
 - `inspection.json` remains the build-time report; its installation flag is
   not retroactively changed. Independent cryptographic verification is pending.
 
@@ -174,7 +191,12 @@ channels for device evidence.
 - CI now separates Ubuntu 22.04 host checks from the pinned Focal API-6 package
   build. Actionlint passes. The four guarded upstream workflows have no added
   yamllint findings relative to the baseline; inherited formatting is preserved.
-  No GitHub workflow execution is claimed.
+- The workflow has since run on GitHub. Run
+  <https://github.com/balcsida/plezy/actions/runs/35648745086> (tag
+  `tizen-v2.20.1-rc2`) completed both `tv-arm-release` and
+  `tv-arm-signed-release` successfully and attached the package to a
+  pre-release. For a pull-request event `tv-arm-signed-release` is skipped, as
+  the fork-safety guard intends.
 
 ## Verification tiers
 
@@ -274,6 +296,5 @@ extract. Only the explicitly allowlisted build artifacts belong in ordinary PR C
   subtitle burn-in/conversion, not just fake channel responses.
 - Execute the isolated device suite and process-restart/upgrade checks.
 - Establish independent cryptographic verification and Samsung entitlement.
-- Run the checked-in GitHub workflow and record its actual run URL.
 
 Do not call the port production-ready while these acceptance gates remain open.

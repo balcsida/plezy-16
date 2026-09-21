@@ -10,16 +10,22 @@ See [PORT.md](PORT.md) and `tizen/toolchain.json` for provenance and exact pins.
   configured `tizen60` project. This does not prove every runtime API on the TV.
 - The pure .NET geometry tests have passed. Dart channel tests use fake native
   channels; they are not playback or physical-remote tests.
-- A 28 MB release-mode, disposable-test-signed TPK passed structural inspection
-  and direct SDK installation on the target TV, but closed immediately.
-  An isolated diagnostic app captured a missing integration-test registration
-  entry point. After the dependency correction, the same inspected release
-  payload reached a stable login page in a separate diagnostic app on the TV,
-  with native player/window initialization and initial database startup verified.
-  See [ACCEPTANCE.md](ACCEPTANCE.md) for hashes and current evidence.
-- The corrected production-identity package is not installed. Independent
-  cryptographic verification, playback and storage/remote acceptance remain open.
-- CI is defined but has not been run on GitHub. No release has been published.
+- Early release-mode, disposable-test-signed TPKs installed but closed
+  immediately; the cause was a missing integration-test registration entry
+  point, since corrected. That history is superseded by the entries below and
+  is retained only in [ACCEPTANCE.md](ACCEPTANCE.md), with hashes.
+- A production-identity package signed by the preserved author is installed on
+  the target TV as an in-place upgrade. The operator has confirmed Jellyfin
+  playback with picture, audio, seek and the Flutter controls together. See
+  [ACCEPTANCE.md](ACCEPTANCE.md) for the current status line and evidence.
+- Independent cryptographic verification and Samsung entitlement remain open,
+  as do storage/remote acceptance and the device-matrix rows. `inspection.json`
+  still reports `cryptographic_signature_verified` and `tv_installation_verified`
+  as false: it is a build-time structural report and is not retroactively
+  changed by a later successful installation.
+- CI has been run on GitHub and pre-releases are published from `tizen-v*` tags.
+  A green workflow and an attached package are build evidence, not device
+  acceptance.
 
 ## Reproducible Linux environment
 
