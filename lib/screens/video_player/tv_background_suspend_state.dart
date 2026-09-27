@@ -28,6 +28,12 @@ class TvBackgroundSuspendState {
   /// released on TV hardware with shared decoders.
   static const Duration playerSuspendGrace = Duration(seconds: 30);
 
+  /// Tizen's grace: powering the TV off pauses the app on its way into
+  /// standby, so the release has to land before the process is frozen.
+  // ponytail: a guess at standby entry timing; if the stop still loses that
+  // race on hardware, drop to zero and let the busy re-arm poll faster.
+  static const Duration tizenPlayerSuspendGrace = Duration(seconds: 1);
+
   /// Redelivery schedule for the suspend-time stopped report. Standby entry
   /// can drop Wi-Fi into power-save and stall exactly that connect, and
   /// mutations deliberately never fail over, so the terminal report gets a
@@ -47,9 +53,9 @@ class TvBackgroundSuspendState {
 
   /// (Re-)arm the grace timer; [onExpired] runs once when the grace elapses
   /// while still backgrounded.
-  void armGrace(void Function() onExpired) {
+  void armGrace(void Function() onExpired, {Duration grace = playerSuspendGrace}) {
     _graceTimer?.cancel();
-    _graceTimer = Timer(playerSuspendGrace, () {
+    _graceTimer = Timer(grace, () {
       _graceTimer = null;
       onExpired();
     });

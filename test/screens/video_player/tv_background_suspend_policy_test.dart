@@ -10,6 +10,19 @@ void main() {
     );
   });
 
+  test('Tizen VOD releases the player so standby cannot strand its stream', () {
+    expect(
+      shouldSuspendPlayerForTvBackground(
+        isAndroid: false,
+        isTizen: true,
+        isTv: true,
+        isLive: false,
+        alreadySuspended: false,
+      ),
+      isTrue,
+    );
+  });
+
   test('live TV retains its tuned session and time-shift state', () {
     expect(
       shouldSuspendPlayerForTvBackground(isAndroid: true, isTv: true, isLive: true, alreadySuspended: false),

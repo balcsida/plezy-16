@@ -249,20 +249,23 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
   }
 
   /// Arm the grace timer that releases the native AV pipeline if the app
-  /// stays backgrounded (Android TV only). Returns whether it was armed.
+  /// stays backgrounded (Android TV and Tizen). Returns whether it was armed.
   bool _armTvBackgroundPlayerSuspendTimer() {
     if (_shuttingDown) return false;
+    final isTizen = PlatformDetector.isTizen();
     if (!shouldSuspendPlayerForTvBackground(
       isAndroid: Platform.isAndroid,
+      isTizen: isTizen,
       isTv: PlatformDetector.isTV(),
       isLive: widget.isLive,
       alreadySuspended: _tvSuspend.suspended,
     )) {
       return false;
     }
-    _tvSuspend.armGrace(() {
-      _enqueueLifecycleTransition('tv_background_suspend', _suspendPlayerForTvBackground);
-    });
+    _tvSuspend.armGrace(
+      () => _enqueueLifecycleTransition('tv_background_suspend', _suspendPlayerForTvBackground),
+      grace: isTizen ? TvBackgroundSuspendState.tizenPlayerSuspendGrace : TvBackgroundSuspendState.playerSuspendGrace,
+    );
     return true;
   }
 
