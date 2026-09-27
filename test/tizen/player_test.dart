@@ -44,6 +44,15 @@ void main() {
     expect(player.state.playing, isFalse);
   });
 
+  test('a paused open reports its loaded frame without playing', () async {
+    final player = PlayerTizen();
+    addTearDown(player.dispose);
+    await player.open(Media('https://example.test/video.mp4'), play: false);
+    event(player, Map.of(calls.last.arguments as Map), 'ready', {'durationMs': 20000, 'tracks': []});
+    expect(player.state.hasRenderedFrame, isTrue);
+    expect(player.state.playing, isFalse);
+  });
+
   test('seeks are serialized and coalesce to the most recent target', () async {
     final player = PlayerTizen();
     addTearDown(player.dispose);

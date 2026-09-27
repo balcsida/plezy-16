@@ -78,6 +78,9 @@ class PlayerTizen extends PlayerBase with VideoRectSupport {
         handlePropertyChange('paused-for-cache', false);
         setSeekable(true);
         super.handlePlayerEvent('file-loaded', null);
+        // Prepared is loaded, as mpv's restart after a paused load: without it
+        // a paused open (TV suspend restore) never leaves the loading screen.
+        super.handlePlayerEvent('playback-restart', null);
       case 'position':
         final ms = data?['positionMs'] as int? ?? 0;
         handlePropertyChange('time-pos', ms / 1000);
