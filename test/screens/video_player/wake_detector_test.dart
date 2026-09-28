@@ -15,11 +15,13 @@ void main() {
     detector = WakeDetector(onWake: wakes.add, wallClock: () => wall, monotonic: () => mono);
   });
 
-  /// Time passing with the process running: both clocks advance.
+  /// Time passing with the process running: both clocks advance with it.
   void run(FakeAsync async, Duration time) {
-    wall = wall.add(time);
-    mono += time;
-    async.elapse(time);
+    for (var passed = Duration.zero; passed < time; passed += wakeCheckPeriod) {
+      wall = wall.add(wakeCheckPeriod);
+      mono += wakeCheckPeriod;
+      async.elapse(wakeCheckPeriod);
+    }
   }
 
   test('running time is never a wake', () {
@@ -49,6 +51,32 @@ void main() {
     fakeAsync((async) {
       detector.start();
       wall = wall.add(wakeGapThreshold - const Duration(milliseconds: 1));
+      run(async, wakeCheckPeriod);
+      expect(wakes, isEmpty);
+      detector.stop();
+    });
+  });
+
+  test('a process frozen while the clocks ran on is noticed by its late check', () {
+    fakeAsync((async) {
+      detector.start();
+      run(async, const Duration(minutes: 1));
+      // Forty seconds in which neither this timer nor anything else ran.
+      wall = wall.add(const Duration(seconds: 40));
+      mono += const Duration(seconds: 40);
+      run(async, wakeCheckPeriod);
+      expect(wakes, [const Duration(seconds: 40)]);
+      run(async, const Duration(minutes: 5));
+      expect(wakes, hasLength(1));
+      detector.stop();
+    });
+  });
+
+  test('a check that runs a little late is not a wake', () {
+    fakeAsync((async) {
+      detector.start();
+      wall = wall.add(const Duration(seconds: 4));
+      mono += const Duration(seconds: 4);
       run(async, wakeCheckPeriod);
       expect(wakes, isEmpty);
       detector.stop();

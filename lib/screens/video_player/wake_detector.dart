@@ -9,13 +9,13 @@ const Duration wakeCheckPeriod = Duration(seconds: 2);
 /// counts as a suspend rather than a clock correction.
 const Duration wakeGapThreshold = Duration(seconds: 5);
 
-/// Notices that the system was suspended under a process nobody told.
+/// Notices that the process was stopped without anybody telling it.
 ///
 /// A Samsung TV powers off into standby without pausing the app. Measured on
-/// a UE55AU7022KXXH: no pause or resume callback reached the host, and the
-/// process stayed frozen for the whole standby. The monotonic clock stops
-/// with the process while the wall clock keeps running, so the two drifting
-/// apart is the only signal there is.
+/// a UE55AU7022KXXH: no pause or resume callback reached the host. After five
+/// minutes the monotonic clock was 308 s behind the wall clock: the system
+/// had suspended. After less than two the clocks agreed, so a short standby
+/// can only show as a check that ran late, if the process was stopped at all.
 // ponytail: a wall clock stepped forward by the threshold or more reads as a
 // wake and costs one needless rebuild; compare against a boot-time clock from
 // the host if a trace ever shows it.
@@ -56,9 +56,19 @@ class WakeDetector {
   void _check() {
     final wall = _wallClock();
     final mono = _monotonic();
-    final gap = wall.difference(_wall) - (mono - _mono);
+    final ran = mono - _mono;
+    // A suspended system stops the monotonic clock and leaves the wall clock.
+    final suspended = wall.difference(_wall) - ran;
+    // A frozen process stops this timer and leaves both clocks.
+    // ponytail: a main thread blocked for the threshold reads the same and
+    // costs one rebuild; tell them apart if a trace ever shows it.
+    final frozen = ran - wakeCheckPeriod;
     _wall = wall;
     _mono = mono;
-    if (gap >= wakeGapThreshold) onWake(gap);
+    if (suspended >= wakeGapThreshold) {
+      onWake(suspended);
+    } else if (frozen >= wakeGapThreshold) {
+      onWake(frozen);
+    }
   }
 }
