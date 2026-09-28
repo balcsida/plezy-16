@@ -57,16 +57,16 @@ extension _VideoPlayerErrorMethods on VideoPlayerScreenState {
     }
   }
 
-  /// Keep the loading state up for a failure that will be retried. A failure
-  /// that lands in the background waits for the resume to rebuild the player.
+  /// Keep the loading state up for a failure that will be retried.
   void _awaitReconnect() {
     _dismissPlaybackFailure();
     _firstFrame.resetUiForOpen();
-    if (!_appBackgrounded) _reconnect.schedule();
+    _reconnect.schedule();
   }
 
   void _runReconnect() {
-    // A newer open cleared the latch and owns the player now.
+    // A newer open cleared the latch and owns the player now. In the
+    // background the attempt is dropped: the wake reopens with a full budget.
     if (!mounted || _shuttingDown || _isExiting.value || !_hasFatalPlaybackError || _appBackgrounded) return;
     final request = _retryRequestForFailure();
     if (request == null || player == null) {
