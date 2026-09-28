@@ -466,7 +466,13 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
       reason: 'TV background suspend restore',
     );
     if (outcome == MediaReloadOutcome.opened) {
-      if (playNextCountdown != null) await _restorePlayNextPrompt(countdown: playNextCountdown);
+      if (playNextCountdown != null) {
+        await _restorePlayNextPrompt(countdown: playNextCountdown);
+      } else if (startPaused && PlatformDetector.isTizen()) {
+        // A Tizen player that has not started draws nothing: without the
+        // controls a paused rebuild is an empty screen.
+        _chromeController.show(focusPlayPause: true);
+      }
     } else if (outcome == MediaReloadOutcome.rejected) {
       appLogger.w('TV background suspend restore: in-place reload rejected');
     } else if (outcome == MediaReloadOutcome.failed) {
