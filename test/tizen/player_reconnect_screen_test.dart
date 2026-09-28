@@ -167,7 +167,10 @@ void main() {
           () => key.currentState!.debugPlayerUiReadyForTesting,
           describe: () => 'the first open never became ready',
         );
+        // The player publishes its position at most every 250 ms of wall time.
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
         emit('position', {'positionMs': 120000});
+        expect(player().state.position, const Duration(minutes: 2));
 
         // The network goes away: the held stream dies and reopening fails too.
         networkUp = false;
