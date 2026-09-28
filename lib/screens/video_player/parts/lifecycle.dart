@@ -314,8 +314,9 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
     if (lifecycleState == AppLifecycleState.resumed || lifecycleState == AppLifecycleState.inactive) return;
     if (_transitionGate.transition != PlaybackTransition.idle || !_firstFrame.uiReady.value) {
       // A reload/zap/startup flow owns the player right now; stopping under
-      // it would corrupt its open sequence. Retry after another grace.
-      _armTvBackgroundPlayerSuspendTimer();
+      // it would corrupt its open sequence. Retry after another grace. On
+      // Tizen a latched failure already stopped it, and the resume rebuilds.
+      if (!(PlatformDetector.isTizen() && _hasFatalPlaybackError)) _armTvBackgroundPlayerSuspendTimer();
       return;
     }
 
