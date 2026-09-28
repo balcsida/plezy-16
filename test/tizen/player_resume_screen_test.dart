@@ -71,7 +71,7 @@ void main() {
     if (await tmpRoot.exists()) await tmpRoot.delete(recursive: true);
   });
 
-  testWidgets('a wake rebuilds the player paused at the playhead, waiting out an unreachable server', (tester) async {
+  testWidgets('a resume rebuilds the player at the playhead, waiting out an unreachable server', (tester) async {
     final client = TizenStreamClient();
     final multi = testMultiServer(clients: [client]);
     final offlineWatch = OfflineWatchSyncService(database: db, serverManager: multi.manager);
@@ -97,6 +97,7 @@ void main() {
     final key = GlobalKey<VideoPlayerScreenState>();
     final opens = <Map<Object?, Object?>>[];
     var stops = 0;
+    final calls = <String>[];
 
     PlayerBase player() => key.currentState!.player! as PlayerBase;
     void emit(String event, [Map<String, Object?> data = const {}]) {
@@ -112,6 +113,7 @@ void main() {
       methodChannelName: 'com.plezy/tizen_player',
       eventChannelName: 'com.plezy/tizen_player/events',
       methodHandler: (call) async {
+        calls.add(call.method);
         if (call.method == 'stop') stops++;
         if (call.method != 'open') return null;
         opens.add(Map.of(call.arguments as Map));
@@ -204,7 +206,7 @@ void main() {
         await opened(2);
         await ready();
         expect(opens[1]['startMs'], 120000, reason: 'the rebuild starts at the playhead');
-        expect(opens[1]['play'], isFalse, reason: 'a wake comes back paused');
+        expect(opens[1]['play'], isTrue, reason: 'it was playing when the TV went off');
         expect(failureView, findsNothing);
         await playhead(150000);
 
@@ -232,7 +234,7 @@ void main() {
         await opened(3);
         await ready();
         expect(opens[2]['startMs'], 150000);
-        expect(opens[2]['play'], isFalse);
+        expect(opens[2]['play'], isTrue);
         expect(failureView, findsNothing);
         await playhead(200000);
 
@@ -247,7 +249,7 @@ void main() {
         await opened(4);
         await ready();
         expect(opens[3]['startMs'], 200000);
-        expect(opens[3]['play'], isFalse);
+        expect(opens[3]['play'], isTrue);
         expect(failureView, findsNothing);
         await playhead(240000);
 
@@ -260,10 +262,32 @@ void main() {
         await opened(5);
         await ready();
         expect(opens[4]['startMs'], 240000);
-        expect(opens[4]['play'], isFalse);
+        expect(opens[4]['play'], isTrue);
         expect(failureView, findsNothing);
 
-        // A server that stays away spends the whole budget, which the wake
+        // A video the viewer had paused comes back paused, behind its controls.
+        await playhead(260000);
+        final pausedBefore = calls.where((call) => call == 'pause').length;
+        await tester.sendKeyEvent(LogicalKeyboardKey.space);
+        await pumpUntil(
+          tester,
+          () => calls.where((call) => call == 'pause').length == pausedBefore + 1,
+          describe: () => 'calls=$calls',
+        );
+        emit('playing', {'value': false});
+        key.currentState!.chromeController.hide(ignoreHolds: true);
+        await tester.pump(const Duration(seconds: 1));
+        expect(key.currentState!.chromeController.controlsVisible, isFalse);
+        await powerOff();
+        await powerOn();
+        await opened(6);
+        await ready();
+        expect(opens[5]['startMs'], 260000);
+        expect(opens[5]['play'], isFalse, reason: 'it was paused when the TV went off');
+        expect(key.currentState!.chromeController.controlsVisible, isTrue);
+        expect(failureView, findsNothing);
+
+        // A server that stays away spends the whole budget, which the resume
         // refilled, and only then raises the failure view.
         await powerOff();
         client.reachable = false;
@@ -277,15 +301,15 @@ void main() {
           await decided(++decisions);
         }
         await pumpUntil(tester, () => failureView.evaluate().isNotEmpty, describe: () => 'no failure view');
-        expect(opens, hasLength(5));
+        expect(opens, hasLength(6));
         await tester.pump(const Duration(minutes: 2));
         expect(client.decisions, decisions, reason: 'a spent budget arms nothing');
 
         client.reachable = true;
         await tester.tap(find.widgetWithText(FilledButton, t.common.retry));
-        await opened(6);
+        await opened(7);
         await pumpUntil(tester, () => failureView.evaluate().isEmpty, describe: () => 'failure view still up');
-        expect(opens[5]['startMs'], 240000);
+        expect(opens[6]['startMs'], 260000);
 
         var shutdownDone = false;
         final shutdown = PlaybackCoordinator.instance.shutdownVideo().whenComplete(() => shutdownDone = true);

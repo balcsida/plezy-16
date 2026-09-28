@@ -201,8 +201,8 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
     )) {
       if (isTizen) {
         // The host paused natively before Dart saw the lifecycle message, so
-        // the intent never learned of it; a resume comes back paused.
-        _playbackIntentShouldPlay = false;
+        // the intent never learned of it and still says what the viewer
+        // last asked for: a video that was playing plays on.
         await _rebuildTizenPlayer();
       } else {
         await _restorePlayerAfterTvBackgroundSuspend();

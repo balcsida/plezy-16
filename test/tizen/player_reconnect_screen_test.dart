@@ -242,7 +242,7 @@ void main() {
         await powerOn();
         await opened(3);
         expect(opens[2]['startMs'], 600000);
-        expect(opens[2]['play'], isFalse, reason: 'a resume comes back paused');
+        expect(opens[2]['play'], isTrue, reason: 'it was to play when the TV went off');
 
         // An item that never played fails at once on what a reopen cannot change.
         await pumpUntil(tester, () => unsupported.evaluate().isNotEmpty, describe: () => 'no failure view');
@@ -256,8 +256,6 @@ void main() {
         expect(opens[3]['startMs'], 600000);
         expect(unsupported, findsNothing);
         expect(failureView, findsNothing);
-        await tester.sendKeyEvent(LogicalKeyboardKey.space);
-        await pumpUntil(tester, () => calls.contains('play'), describe: () => 'calls=$calls');
         emit('playing', {'value': true});
         await playhead(1200000);
         spent = 0;
