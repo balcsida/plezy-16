@@ -200,17 +200,10 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
       openSettled: _firstFrame.uiReady.value || _hasFatalPlaybackError,
     )) {
       if (isTizen) {
-        _reconnect.reset();
         // The host paused natively before Dart saw the lifecycle message, so
-        // the intent never learned of it; a wake comes back paused.
+        // the intent never learned of it; a resume comes back paused.
         _playbackIntentShouldPlay = false;
-      }
-      if (isTizen && _hasFatalPlaybackError) {
-        // A failure stands, so the player holds neither playhead nor tracks
-        // to rebuild from. A played item reopens as Retry would; one that
-        // never played keeps its failure view.
-        _tvSuspend.clear();
-        if (_failedItemHasPlayed) _runReconnect();
+        await _rebuildTizenPlayer();
       } else {
         await _restorePlayerAfterTvBackgroundSuspend();
       }
@@ -403,7 +396,40 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
   /// rewind-on-resume) exactly like a plain background pause. Live sessions
   /// never enter this flow because their tuned session and capture-buffer
   /// position must remain intact across backgrounding.
-  Future<void> _restorePlayerAfterTvBackgroundSuspend() async {
+  /// The TV slept under the app without pausing it, so no resume follows:
+  /// the clocks drifting apart is all that says it happened.
+  Future<void> _handleWakeWithoutLifecycle(int resumesAtWake) async {
+    // A TV that does report its standby resumes the app, and that resume
+    // rebuilds: it either came since the gap was seen or is still to come.
+    if (_shuttingDown || resumesAtWake != _resumes || _appBackgrounded) return;
+    if (!shouldRebuildPlayerOnResume(
+      suspended: _tvSuspend.suspended,
+      isTizen: true,
+      isLive: widget.isLive,
+      openSettled: _firstFrame.uiReady.value || _hasFatalPlaybackError,
+    )) {
+      return;
+    }
+    await _rebuildTizenPlayer();
+  }
+
+  /// Replace the Tizen player after the app, or the whole TV, was away. A
+  /// player held across standby wakes without a picture or with a dead
+  /// connection, so the platform's advice is a new one.
+  Future<void> _rebuildTizenPlayer() async {
+    _reconnect.reset();
+    if (_hasFatalPlaybackError) {
+      // A failure stands, so the player holds neither playhead nor tracks
+      // to rebuild from. A played item reopens as Retry would; one that
+      // never played keeps its failure view.
+      _tvSuspend.clear();
+      if (_failedItemHasPlayed) _runReconnect();
+      return;
+    }
+    await _restorePlayerAfterTvBackgroundSuspend(startPaused: !_playbackIntentShouldPlay);
+  }
+
+  Future<void> _restorePlayerAfterTvBackgroundSuspend({bool startPaused = true}) async {
     final restore = _tvSuspend.consumeForRestore();
     final suspendedMetadata = _tvSuspendedMetadata;
     _tvSuspendedMetadata = null;
@@ -432,7 +458,7 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
       preservedAudioTrack: restore.audioTrack,
       preservedSubtitleTrack: SubtitlePreference.trackOrNull(restore.subtitleTrack),
       preservedSecondarySubtitleTrack: SubtitlePreference.trackOrNull(restore.secondarySubtitleTrack),
-      startPaused: true,
+      startPaused: startPaused,
       // A failure raises the failure view below instead: a snackbar would sit
       // over a player whose pipeline the suspend already released. On Tizen a
       // failed restore is retried before it is announced.

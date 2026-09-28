@@ -120,6 +120,7 @@ import 'video_player/live_tv_session_state.dart';
 import 'video_player/tv_background_suspend_policy.dart';
 import 'video_player/tv_background_suspend_state.dart';
 import 'video_player/visual_effects_controller.dart';
+import 'video_player/wake_detector.dart';
 import 'video_player/widgets/player_prompt_overlays.dart';
 import '../widgets/overlay_sheet.dart';
 import '../widgets/video_controls/player_chrome_controller.dart';
@@ -1334,6 +1335,10 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen>
   @visibleForTesting
   bool get debugPlayerUiReadyForTesting => _firstFrame.uiReady.value;
 
+  /// What [WakeDetector] does when the clocks drift apart.
+  @visibleForTesting
+  void debugWakeForTesting() => _onWakeWithoutLifecycle();
+
   @visibleForTesting
   Future<void> debugSeekPlaybackForTesting(Duration position) => _seekPlayback(position);
 
@@ -1536,6 +1541,7 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen>
     }
 
     WidgetsBinding.instance.addObserver(this);
+    if (PlatformDetector.isTizen()) _wakeDetector.start();
     if (PlatformDetector.isAutomotive()) {
       // Driving normally reaches this screen as a lifecycle event, because the
       // system puts its blocking activity over a non-distraction-optimized app.
@@ -1654,6 +1660,9 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen>
         // Synchronously, before the queued transition: a pending suspend must
         // not fire between this event and _handleAppResumed running.
         _cancelTvBackgroundPlayerSuspendTimer();
+        // This resume owns the wake: the clock gap behind it is not news.
+        _resumes++;
+        if (PlatformDetector.isTizen()) _wakeDetector.start();
         _recordLifecycleState('resumed');
         _enqueueLifecycleTransition('resumed', _handleAppResumed);
         break;
@@ -2540,6 +2549,7 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen>
     _episode.dispose();
     _tvSuspend.dispose();
     _reconnect.cancel();
+    _wakeDetector.stop();
 
     _stillWatchingTimer?.cancel();
     _stillWatchingCountdown.dispose();
@@ -2808,6 +2818,17 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen>
 
   /// A version, quality or audio switch the viewer asked for owns the open.
   bool _sourceSwitchInFlight = false;
+
+  /// Tizen only: the TV can sleep under the app without a lifecycle event.
+  late final WakeDetector _wakeDetector = WakeDetector(onWake: (_) => _onWakeWithoutLifecycle());
+
+  /// Resume events seen, so a wake can tell whether one came with it.
+  int _resumes = 0;
+
+  void _onWakeWithoutLifecycle() {
+    final resumes = _resumes;
+    _enqueueLifecycleTransition('wake', () => _handleWakeWithoutLifecycle(resumes));
+  }
 
   // OS Media Controls Integration
 
