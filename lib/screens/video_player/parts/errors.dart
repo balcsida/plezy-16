@@ -69,7 +69,9 @@ extension _VideoPlayerErrorMethods on VideoPlayerScreenState {
   void _awaitReconnect() {
     _dismissPlaybackFailure();
     _firstFrame.resetUiForOpen();
-    _reconnect.schedule();
+    // Unarmed in the background, the wake reopens; in the foreground nothing
+    // else would, and the budget can run out between the verdict and here.
+    if (!_reconnect.schedule() && !_appBackgrounded) _presentPlaybackFailure(t.messages.playbackFailed);
   }
 
   void _runReconnect() {
