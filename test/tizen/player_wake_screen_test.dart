@@ -18,6 +18,7 @@ import 'package:plezy/providers/multi_server_provider.dart';
 import 'package:plezy/providers/playback_state_provider.dart';
 import 'package:plezy/providers/shader_provider.dart';
 import 'package:plezy/screens/video_player/playback_reconnect.dart';
+import 'package:plezy/screens/video_player/wake_detector.dart';
 import 'package:plezy/screens/video_player_screen.dart';
 import 'package:plezy/services/download_storage_service.dart';
 import 'package:plezy/services/music/music_playback_service.dart';
@@ -69,6 +70,7 @@ void main() {
     DownloadStorageService.resetForTesting();
     SettingsService.resetForTesting();
     PathProviderPlatform.instance = previousPathProvider;
+    WakeDetector.debugWallOffset = Duration.zero;
     if (await tmpRoot.exists()) await tmpRoot.delete(recursive: true);
   });
 
@@ -188,74 +190,121 @@ void main() {
           await tester.pump();
         }
 
-        /// The TV slept and woke; all the app ever learns is the clock gap.
-        Future<void> wake() async {
-          key.currentState!.debugWakeForTesting();
-          await tester.pump();
+        /// The TV slept and woke. All the app ever learns is that the wall
+        /// clock ran on while its own stood still: 308 s, as measured.
+        void sleep() => WakeDetector.debugWallOffset += const Duration(seconds: 308);
+        Future<void> standby() async {
+          sleep();
+          await tester.pump(wakeCheckPeriod);
         }
+
+        /// Rounds of the test clock and of the real loop, for what must not follow.
+        Future<void> settle() async {
+          for (var round = 0; round < 20; round++) {
+            await tester.pump(const Duration(milliseconds: 10));
+            await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 5)));
+          }
+        }
+
+        Future<void> decided(int count) => pumpUntil(
+          tester,
+          () => client.decisions == count,
+          describe: () => 'decisions=${client.decisions}, wanted $count',
+        );
+        int pauses() => calls.where((call) => call == 'pause').length;
+        bool controlsUp() => key.currentState!.chromeController.controlsVisible;
 
         await opened(1);
         await ready();
         await playhead(1121000);
 
         // Standby while playing: a new player, playing on from the playhead.
-        await wake();
+        await standby();
         await opened(2);
         await ready();
         expect(opens[1]['startMs'], 1121000);
         expect(opens[1]['play'], isTrue, reason: 'it was playing when the TV went off');
         expect(failureView, findsNothing);
-        await playhead(1300000);
+        await playhead(1200000);
 
-        // Standby while paused: paused again, behind controls that say so. A
-        // player that has not started draws nothing of its own.
-        await tester.sendKeyEvent(LogicalKeyboardKey.space);
-        await pumpUntil(tester, () => calls.contains('pause'), describe: () => 'calls=$calls');
-        emit('playing', {'value': false});
-        await tester.pump(const Duration(seconds: 30));
-        expect(key.currentState!.chromeController.controlsPresented, isFalse, reason: 'the controls timed out');
-        await wake();
-        await opened(3);
-        await ready();
-        expect(opens[2]['startMs'], 1300000);
-        expect(opens[2]['play'], isFalse, reason: 'it was paused when the TV went off');
-        expect(key.currentState!.chromeController.controlsPresented, isTrue);
-        expect(failureView, findsNothing);
-
-        // A wake that finds the server unreachable waits for it.
+        // The same, but the wake finds the server unreachable: it waits, and
+        // still plays on.
         client.reachable = false;
-        final decisions = client.decisions;
-        await wake();
-        await pumpUntil(tester, () => client.decisions == decisions + 1);
-        await tester.pump();
-        expect(opens, hasLength(3));
+        var decisions = client.decisions;
+        await standby();
+        await decided(++decisions);
+        await settle();
+        expect(opens, hasLength(2));
         expect(failureView, findsNothing);
         expect(find.byType(SnackBar), findsNothing);
         client.reachable = true;
         await tester.pump(playbackReconnectDelays[0]);
+        await opened(3);
+        await ready();
+        expect(opens[2]['startMs'], 1200000);
+        expect(opens[2]['play'], isTrue);
+        expect(failureView, findsNothing);
+        await playhead(1300000);
+
+        // Standby while paused: paused again, behind controls that say so. A
+        // player that has not started draws nothing of its own.
+        final pausedBefore = pauses();
+        await tester.sendKeyEvent(LogicalKeyboardKey.space);
+        await pumpUntil(tester, () => pauses() == pausedBefore + 1, describe: () => 'calls=$calls');
+        emit('playing', {'value': false});
+        await tester.pump(const Duration(seconds: 30));
+        expect(controlsUp(), isFalse, reason: 'the controls timed out');
+        await standby();
         await opened(4);
         await ready();
         expect(opens[3]['startMs'], 1300000);
+        expect(opens[3]['play'], isFalse, reason: 'it was paused when the TV went off');
+        expect(controlsUp(), isTrue);
+        expect(failureView, findsNothing);
+
+        // Paused, and the server unreachable at the wake: the open that lands
+        // later is as empty without its controls. The viewer dismissed them.
+        key.currentState!.chromeController.hide(ignoreHolds: true);
+        await tester.pump(const Duration(seconds: 1));
+        expect(controlsUp(), isFalse);
+        client.reachable = false;
+        decisions = client.decisions;
+        await standby();
+        await decided(++decisions);
+        await settle();
+        expect(opens, hasLength(4));
+        client.reachable = true;
+        await tester.pump(playbackReconnectDelays[0]);
+        await opened(5);
+        await ready();
+        expect(opens[4]['play'], isFalse);
+        expect(controlsUp(), isTrue);
         expect(failureView, findsNothing);
 
         // A TV that does report its standby resumes the app too. That is one
-        // wake, whichever of the two the app hears of first.
+        // wake: the resume answers the gap before the next check sees it.
         await powerOff();
-        key.currentState!.debugWakeForTesting();
-        await powerOn();
-        await opened(5);
-        await ready();
-        await tester.pump(const Duration(seconds: 5));
-        expect(opens, hasLength(5), reason: 'one wake, one rebuild');
-
-        // Live lifecycle states in the background are not a wake to act on.
-        await powerOff();
-        await wake();
-        await tester.pump(const Duration(milliseconds: 500));
-        expect(opens, hasLength(5), reason: 'the resume to come rebuilds');
+        sleep();
         await powerOn();
         await opened(6);
         await ready();
+        await tester.pump(wakeCheckPeriod * 2);
+        await settle();
+        expect(opens, hasLength(6), reason: 'one wake, one rebuild');
+
+        // Seen first, while the app is still in the background, the gap is
+        // left to the resume that follows.
+        await powerOff();
+        await standby();
+        await settle();
+        expect(opens, hasLength(6), reason: 'the resume to come rebuilds');
+        await powerOn();
+        await opened(7);
+        await ready();
+        await tester.pump(wakeCheckPeriod * 2);
+        await settle();
+        expect(opens, hasLength(7), reason: 'one wake, one rebuild');
+
         var shutdownDone = false;
         final shutdown = PlaybackCoordinator.instance.shutdownVideo().whenComplete(() => shutdownDone = true);
         await pumpUntil(tester, () => shutdownDone);

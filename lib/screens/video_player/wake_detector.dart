@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 /// How often the clocks are compared: the longest a wake goes unnoticed.
 const Duration wakeCheckPeriod = Duration(seconds: 2);
 
@@ -14,13 +16,21 @@ const Duration wakeGapThreshold = Duration(seconds: 5);
 /// process stayed frozen for the whole standby. The monotonic clock stops
 /// with the process while the wall clock keeps running, so the two drifting
 /// apart is the only signal there is.
+// ponytail: a wall clock stepped forward by the threshold or more reads as a
+// wake and costs one needless rebuild; compare against a boot-time clock from
+// the host if a trace ever shows it.
 class WakeDetector {
   WakeDetector({required this.onWake, DateTime Function()? wallClock, Duration Function()? monotonic})
-    : _wallClock = wallClock ?? DateTime.now,
+    : _wallClock = wallClock ?? _systemClock,
       _monotonic = monotonic ?? _processClock;
+
+  /// Moves the default wall clock, as a standby the process never saw does.
+  @visibleForTesting
+  static Duration debugWallOffset = Duration.zero;
 
   static final Stopwatch _stopwatch = Stopwatch()..start();
   static Duration _processClock() => _stopwatch.elapsed;
+  static DateTime _systemClock() => DateTime.now().add(debugWallOffset);
 
   /// Called with the time the process did not see.
   final void Function(Duration gap) onWake;

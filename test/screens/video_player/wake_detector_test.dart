@@ -55,6 +55,18 @@ void main() {
     });
   });
 
+  test('small corrections never add up to a wake', () {
+    fakeAsync((async) {
+      detector.start();
+      for (var tick = 0; tick < 10; tick++) {
+        wall = wall.add(const Duration(seconds: 4));
+        run(async, wakeCheckPeriod);
+      }
+      expect(wakes, isEmpty);
+      detector.stop();
+    });
+  });
+
   test('a wall clock set backwards is not a wake', () {
     fakeAsync((async) {
       detector.start();
