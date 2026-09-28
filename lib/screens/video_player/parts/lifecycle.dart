@@ -387,15 +387,6 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
     }
   }
 
-  /// Rebuild the playback session after a TV background suspend released the
-  /// native pipeline and reported the backend session stopped. VOD reloads in
-  /// place through the regular reload flow — a fresh playback decision, since
-  /// the old session is closed and its stream URL may have expired
-  /// server-side — and comes back paused; the caller's
-  /// [MediaControlsScreenController.restoreAfterResume] then resumes it (with
-  /// rewind-on-resume) exactly like a plain background pause. Live sessions
-  /// never enter this flow because their tuned session and capture-buffer
-  /// position must remain intact across backgrounding.
   /// The TV slept under the app without pausing it, so no resume follows:
   /// the clocks drifting apart is all that says it happened.
   Future<void> _handleWakeWithoutLifecycle(int resumesAtWake) async {
@@ -429,6 +420,15 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
     await _restorePlayerAfterTvBackgroundSuspend(startPaused: !_playbackIntentShouldPlay);
   }
 
+  /// Rebuild the playback session after a TV background suspend released the
+  /// native pipeline and reported the backend session stopped. VOD reloads in
+  /// place through the regular reload flow — a fresh playback decision, since
+  /// the old session is closed and its stream URL may have expired
+  /// server-side — and comes back paused unless [startPaused] is false; the caller's
+  /// [MediaControlsScreenController.restoreAfterResume] then resumes it (with
+  /// rewind-on-resume) exactly like a plain background pause. Live sessions
+  /// never enter this flow because their tuned session and capture-buffer
+  /// position must remain intact across backgrounding.
   Future<void> _restorePlayerAfterTvBackgroundSuspend({bool startPaused = true}) async {
     final restore = _tvSuspend.consumeForRestore();
     final suspendedMetadata = _tvSuspendedMetadata;
