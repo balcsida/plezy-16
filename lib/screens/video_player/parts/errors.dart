@@ -33,6 +33,8 @@ extension _VideoPlayerErrorMethods on VideoPlayerScreenState {
         !_isOfflinePlayback &&
         working != null &&
         working.metadata.globalKey == _currentOpenRequest?.metadata.globalKey &&
+        // A source the viewer just picked fails in the open, not the network.
+        !_sourceSwitchInFlight &&
         (_appBackgrounded || _reconnect.hasBudget);
   }
 

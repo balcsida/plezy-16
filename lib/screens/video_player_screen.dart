@@ -2806,6 +2806,9 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen>
   /// reconnect loop of its own. Superseded by every [_beginPlaybackAttempt].
   late final PlaybackReconnect _reconnect = PlaybackReconnect(onAttempt: _runReconnect);
 
+  /// A version, quality or audio switch the viewer asked for owns the open.
+  bool _sourceSwitchInFlight = false;
+
   // OS Media Controls Integration
 
   /// Navigate to a specific queue item (called from QueueSheet)
