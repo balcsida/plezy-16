@@ -65,6 +65,17 @@ void main() {
     });
   });
 
+  test('starting again forgets a gap that a resume already answered', () {
+    fakeAsync((async) {
+      detector.start();
+      wall = wall.add(const Duration(minutes: 5));
+      detector.start();
+      run(async, const Duration(minutes: 1));
+      expect(wakes, isEmpty);
+      detector.stop();
+    });
+  });
+
   test('stop ends the watch', () {
     fakeAsync((async) {
       detector.start();
