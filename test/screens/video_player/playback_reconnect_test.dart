@@ -41,6 +41,24 @@ void main() {
     });
   });
 
+  test('a recovery restarts the window and keeps the attempts spent', () {
+    fakeAsync((async) {
+      var attempts = 0;
+      final reconnect = PlaybackReconnect(onAttempt: () => attempts++, clock: () => async.elapsed);
+      expect(reconnect.schedule(), isTrue);
+      async.elapse(playbackReconnectDelays[0]);
+      reconnect.recovered();
+      // The stream plays on for ten minutes before it drops again.
+      async.elapse(const Duration(minutes: 10));
+      expect(reconnect.hasBudget, isTrue);
+      expect(reconnect.schedule(), isTrue);
+      async.elapse(playbackReconnectDelays[1] - const Duration(milliseconds: 1));
+      expect(attempts, 1, reason: 'the second delay, not the first again');
+      async.elapse(const Duration(milliseconds: 1));
+      expect(attempts, 2);
+    });
+  });
+
   test('reset refills the budget and cancels the pending attempt', () {
     fakeAsync((async) {
       var attempts = 0;

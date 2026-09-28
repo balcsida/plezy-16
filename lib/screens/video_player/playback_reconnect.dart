@@ -71,6 +71,10 @@ class PlaybackReconnect {
     return true;
   }
 
+  /// A reopen rendered: the next failure starts its own window. The spent
+  /// attempts stay spent, or a stream that opens and fails would loop.
+  void recovered() => _firstArmed = null;
+
   /// A newer open owns the player. The spent attempt is not refunded: that is
   /// the loop guard.
   void cancel() {
