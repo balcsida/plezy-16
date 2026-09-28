@@ -111,6 +111,7 @@ import 'video_player/live_stream_retry.dart';
 import 'video_player/live_timeline_report.dart';
 import 'video_player/wakelock_controller.dart';
 import 'video_player/playback_failure_action.dart';
+import 'video_player/playback_reconnect.dart';
 import 'video_player/playback_transition_gate.dart';
 import 'video_player/open_http_503_watchdog.dart';
 import 'video_player/open_failure_log.dart';
@@ -1156,6 +1157,7 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen>
   /// (generation, player) pairs around. Reloads await the captured, bounded
   /// mutation drain at their replacement-open boundary.
   _PlaybackAttempt _beginPlaybackAttempt(Player currentPlayer, {bool isMediaReload = false}) {
+    _reconnect.cancel();
     _playbackAttempt?.outcome.abort('superseded by a newer playback attempt');
     final trackMutationDrain = _trackManager?.invalidatePendingSelection() ?? Future<void>.value();
     final previousGeneration = _transitionGate.generation;
@@ -2533,6 +2535,7 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen>
 
     _episode.dispose();
     _tvSuspend.dispose();
+    _reconnect.cancel();
 
     _stillWatchingTimer?.cancel();
     _stillWatchingCountdown.dispose();
@@ -2794,6 +2797,10 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen>
   /// otherwise never raises an error (#1830). Armed from [_onPlayerLog],
   /// disarmed on first frame, on every new-open reset, and in [dispose].
   late final OpenHttp503Watchdog _http503Watchdog = OpenHttp503Watchdog(onPersistent: _onOpenHttp503Persistent);
+
+  /// Reopens a played item whose stream failed on a backend with no
+  /// reconnect loop of its own. Superseded by every [_beginPlaybackAttempt].
+  late final PlaybackReconnect _reconnect = PlaybackReconnect(onAttempt: _runReconnect);
 
   // OS Media Controls Integration
 

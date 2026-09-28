@@ -709,6 +709,9 @@ extension _VideoPlayerReloadMethods on VideoPlayerScreenState {
               // and quality switches) keep the spent budget — that is the
               // loop guard.
               _eofRecovery.resetBudget();
+              // ponytail: refills only on Retry, item change and resume; add
+              // the 30 s progress rule above if flaky networks exhaust it.
+              _reconnect.reset();
             }
 
             // Versions/mediaInfo come from the committed session; rebuild so

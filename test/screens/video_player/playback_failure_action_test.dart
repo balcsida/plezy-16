@@ -9,6 +9,7 @@ PlaybackFailureAction resolve({
   bool liveRetrying = false,
   int liveFallbackLevel = 0,
   bool liveRetryFailed = false,
+  bool canReconnect = false,
 }) {
   return resolvePlaybackFailureAction(
     cause: cause,
@@ -17,6 +18,7 @@ PlaybackFailureAction resolve({
     liveRetrying: liveRetrying,
     liveFallbackLevel: liveFallbackLevel,
     liveRetryFailed: liveRetryFailed,
+    canReconnect: canReconnect,
   );
 }
 
@@ -41,6 +43,31 @@ void main() {
 
     test('live TV keeps its fallback ladder', () {
       expect(resolve(statuses: {403}, isLive: true), PlaybackFailureAction.liveRetry);
+    });
+  });
+
+  group('reconnect', () {
+    test('an eligible on-demand failure reopens instead of ending playback', () {
+      // A backend without a reconnect loop reports the first dropped
+      // connection as an error; the item had played, so the stream is retried.
+      expect(resolve(canReconnect: true), PlaybackFailureAction.reconnect);
+      expect(resolve(cause: PlayerError.openTimedOut, canReconnect: true), PlaybackFailureAction.reconnect);
+    });
+
+    test('never outranks a verdict a reopen cannot change', () {
+      expect(resolve(statuses: {403}, canReconnect: true), PlaybackFailureAction.playbackNotAllowedDialog);
+      expect(resolve(statuses: {500}, canReconnect: true), PlaybackFailureAction.serverLimitDialog);
+      expect(resolve(statuses: {404}, canReconnect: true), PlaybackFailureAction.mediaUnreadableDialog);
+      expect(resolve(cause: PlayerError.serverHttp503, canReconnect: true), PlaybackFailureAction.serverBusyDialog);
+      expect(resolve(cause: PlayerError.audioOutputFailed, canReconnect: true), PlaybackFailureAction.fatal);
+    });
+
+    test('live TV keeps its own ladder', () {
+      expect(resolve(isLive: true, canReconnect: true), PlaybackFailureAction.liveRetry);
+    });
+
+    test('stays off unless the caller opts in', () {
+      expect(resolve(), PlaybackFailureAction.fatal);
     });
   });
 

@@ -15,6 +15,46 @@ extension _VideoPlayerErrorMethods on VideoPlayerScreenState {
     return t.messages.errorLoading(error: redacted);
   }
 
+  /// Whether the app is in the background, where the Tizen host refuses to
+  /// play and hides what it opens: recovery there belongs to the resume.
+  bool get _appBackgrounded {
+    final state = WidgetsBinding.instance.lifecycleState;
+    return state == AppLifecycleState.hidden || state == AppLifecycleState.paused;
+  }
+
+  /// Whether reopening may recover a failure. Tizen has no reconnect loop, so
+  /// one dropped connection ends playback, and after standby the network can
+  /// lag the wake. Only the item that already played here is retried: one
+  /// that never opened still fails at once.
+  bool get _canReconnect {
+    final working = _workingOpenRequest;
+    return PlatformDetector.isTizen() &&
+        !widget.isLive &&
+        !_isOfflinePlayback &&
+        working != null &&
+        working.metadata.globalKey == _currentOpenRequest?.metadata.globalKey &&
+        (_appBackgrounded || _reconnect.hasBudget);
+  }
+
+  /// Keep the loading state up for a failure that will be retried. A failure
+  /// that lands in the background waits for the resume to rebuild the player.
+  void _awaitReconnect() {
+    _dismissPlaybackFailure();
+    _firstFrame.resetUiForOpen();
+    if (!_appBackgrounded) _reconnect.schedule();
+  }
+
+  void _runReconnect() {
+    // A newer open cleared the latch and owns the player now.
+    if (!mounted || _shuttingDown || _isExiting.value || !_hasFatalPlaybackError || _appBackgrounded) return;
+    final request = _retryRequestForFailure();
+    if (request == null || player == null) {
+      _presentPlaybackFailure(t.messages.playbackFailed);
+      return;
+    }
+    unawaited(_reopenAfterFailure(request, automatic: true));
+  }
+
   void _onPlayerError(PlayerError err) {
     appLogger.e('[Player ERROR] ${err.message}');
     if (!mounted || _isExiting.value) return;
@@ -34,6 +74,7 @@ extension _VideoPlayerErrorMethods on VideoPlayerScreenState {
       liveRetrying: _live.retrying,
       liveFallbackLevel: _live.fallbackLevel,
       liveRetryFailed: _live.retryFailed,
+      canReconnect: _canReconnect,
     );
 
     switch (action) {
@@ -59,6 +100,11 @@ extension _VideoPlayerErrorMethods on VideoPlayerScreenState {
         _beginLiveLadderRetry();
       case PlaybackFailureAction.liveInterrupted:
         showGlobalErrorSnackBar(t.messages.liveStreamInterrupted);
+      // Latched like a fatal error so the dead load is stopped and its
+      // repeats are ignored, but the loading state stands in for the view.
+      case PlaybackFailureAction.reconnect:
+        _latchFatalPlaybackError(action, cause: err.cause);
+        _awaitReconnect();
       case PlaybackFailureAction.fatal:
         _latchFatalPlaybackError(action, cause: err.cause);
         // A failed core start carries only diagnostic text; _lastLogError is
@@ -185,6 +231,7 @@ extension _VideoPlayerErrorMethods on VideoPlayerScreenState {
   }
 
   void _retryFailedPlayback() {
+    _reconnect.reset();
     final request = _retryRequestForFailure();
     if (request == null || player == null) {
       // Nothing was ever dispatched (or the core is gone): start over.
@@ -194,7 +241,7 @@ extension _VideoPlayerErrorMethods on VideoPlayerScreenState {
     unawaited(_reopenAfterFailure(request));
   }
 
-  Future<void> _reopenAfterFailure(_PlaybackOpenRequest request) async {
+  Future<void> _reopenAfterFailure(_PlaybackOpenRequest request, {bool automatic = false}) async {
     final outcome = await _reloadMediaInPlace(
       metadata: request.metadata,
       selectedMediaIndex: request.mediaIndex,
@@ -208,11 +255,18 @@ extension _VideoPlayerErrorMethods on VideoPlayerScreenState {
       // A failure before the open rolls the view back to the message it
       // retried from; one after it raises its own through _onPlayerError.
       showErrorUi: false,
-      reason: 'retry after playback failure',
+      reason: automatic ? 'automatic reconnect' : 'retry after playback failure',
     );
-    if (outcome == MediaReloadOutcome.failed && mounted && _playbackFailureMessage == null) {
-      _presentPlaybackFailure(t.messages.playbackFailed);
+    // An open that was dispatched and then failed reports through
+    // _onPlayerError. These two raise nothing, so the schedule continues here;
+    // an automatic attempt that found the player busy tries again later.
+    final unopened = outcome == MediaReloadOutcome.failed || (automatic && outcome == MediaReloadOutcome.rejected);
+    if (!unopened || !mounted) return;
+    if (automatic && _canReconnect) {
+      _awaitReconnect();
+      return;
     }
+    if (_playbackFailureMessage == null) _presentPlaybackFailure(t.messages.playbackFailed);
   }
 
   void _onPlayerLog(PlayerLog log) {
