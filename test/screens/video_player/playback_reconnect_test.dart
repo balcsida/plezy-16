@@ -6,7 +6,7 @@ void main() {
   test('attempts follow the schedule and the budget ends', () {
     fakeAsync((async) {
       var attempts = 0;
-      final reconnect = PlaybackReconnect(onAttempt: () => attempts++);
+      final reconnect = PlaybackReconnect(onAttempt: () => attempts++, clock: () => async.elapsed);
       for (final delay in playbackReconnectDelays) {
         final before = attempts;
         expect(reconnect.schedule(), isTrue);
@@ -19,6 +19,25 @@ void main() {
       expect(reconnect.schedule(), isFalse);
       async.elapse(const Duration(minutes: 5));
       expect(attempts, playbackReconnectDelays.length);
+    });
+  });
+
+  test('attempts that each wait out a timeout end the schedule by time', () {
+    fakeAsync((async) {
+      var attempts = 0;
+      final reconnect = PlaybackReconnect(onAttempt: () => attempts++, clock: () => async.elapsed);
+      // Measured on the TV: a stream that never starts fails after 30 s.
+      const timeout = Duration(seconds: 30);
+      while (reconnect.schedule()) {
+        final armed = attempts;
+        async.elapse(playbackReconnectDelays[armed]);
+        expect(attempts, armed + 1);
+        async.elapse(timeout);
+      }
+      expect(attempts, 3, reason: 'armed at 0 s, 32 s and 65 s; by 100 s the window is spent');
+      expect(reconnect.hasBudget, isFalse);
+      reconnect.reset();
+      expect(reconnect.hasBudget, isTrue);
     });
   });
 
