@@ -796,6 +796,11 @@ extension _VideoPlayerReloadMethods on VideoPlayerScreenState {
         if (_autoPipEnabled) {
           unawaited(_updateAutoPipState(isPlaying: currentPlayer.state.playing));
         }
+        // A Tizen player that has not started draws nothing: without the
+        // controls a paused open is an empty screen.
+        if (PlatformDetector.isTizen() && !shouldAutoStart && !wtOwnsStart) {
+          _chromeController.show(focusPlayPause: true);
+        }
         return MediaReloadOutcome.opened;
       } catch (e) {
         if (!isCurrentReload()) return MediaReloadOutcome.superseded;
