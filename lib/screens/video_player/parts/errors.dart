@@ -53,6 +53,8 @@ extension _VideoPlayerErrorMethods on VideoPlayerScreenState {
       if (!_hasFatalPlaybackError) _latchFatalPlaybackError(PlaybackFailureAction.reconnect);
       _awaitReconnect();
     } else if (_playbackFailureMessage == null) {
+      // Latched so the player a rollback may have restarted is stopped.
+      if (!_hasFatalPlaybackError) _latchFatalPlaybackError(PlaybackFailureAction.fatal);
       _presentPlaybackFailure(t.messages.playbackFailed);
     }
   }
