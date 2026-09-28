@@ -196,7 +196,6 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
     if (shouldRebuildPlayerOnResume(
       suspended: _tvSuspend.suspended,
       isTizen: isTizen,
-      isTv: PlatformDetector.isTV(),
       isLive: widget.isLive,
       openSettled: _firstFrame.uiReady.value || _hasFatalPlaybackError,
     )) {

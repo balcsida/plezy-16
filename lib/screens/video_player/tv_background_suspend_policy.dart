@@ -26,11 +26,10 @@ bool shouldSuspendPlayerForTvBackground({
 bool shouldRebuildPlayerOnResume({
   required bool suspended,
   required bool isTizen,
-  required bool isTv,
   required bool isLive,
   required bool openSettled,
 }) {
-  return suspended || (isTizen && isTv && !isLive && openSettled);
+  return suspended || (isTizen && !isLive && openSettled);
 }
 
 /// Whether the current TV live session must be closed before suspension.

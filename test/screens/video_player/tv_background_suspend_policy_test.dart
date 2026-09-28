@@ -49,13 +49,7 @@ void main() {
   });
 
   bool rebuild({bool suspended = false, bool isTizen = true, bool isLive = false, bool openSettled = true}) =>
-      shouldRebuildPlayerOnResume(
-        suspended: suspended,
-        isTizen: isTizen,
-        isTv: true,
-        isLive: isLive,
-        openSettled: openSettled,
-      );
+      shouldRebuildPlayerOnResume(suspended: suspended, isTizen: isTizen, isLive: isLive, openSettled: openSettled);
 
   test('Tizen rebuilds on every resume, whether or not the suspend ran first', () {
     expect(rebuild(), isTrue);
