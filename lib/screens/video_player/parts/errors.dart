@@ -27,15 +27,19 @@ extension _VideoPlayerErrorMethods on VideoPlayerScreenState {
   /// lag the wake. Only the item that already played here is retried: one
   /// that never opened still fails at once.
   bool get _canReconnect {
-    final working = _workingOpenRequest;
     return PlatformDetector.isTizen() &&
         !widget.isLive &&
         !_isOfflinePlayback &&
-        working != null &&
-        working.metadata.globalKey == _currentOpenRequest?.metadata.globalKey &&
+        _failedItemHasPlayed &&
         // A source the viewer just picked fails in the open, not the network.
         !_sourceSwitchInFlight &&
         (_appBackgrounded || _reconnect.hasBudget);
+  }
+
+  /// Whether the open on record is for the item that already played here.
+  bool get _failedItemHasPlayed {
+    final working = _workingOpenRequest;
+    return working != null && working.metadata.globalKey == _currentOpenRequest?.metadata.globalKey;
   }
 
   /// Keep the loading state up for a failure that will be retried. A failure

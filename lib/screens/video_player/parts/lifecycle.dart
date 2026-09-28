@@ -205,7 +205,15 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
         // the intent never learned of it; a wake comes back paused.
         _playbackIntentShouldPlay = false;
       }
-      await _restorePlayerAfterTvBackgroundSuspend();
+      if (isTizen && _hasFatalPlaybackError) {
+        // A failure stands, so the player holds neither playhead nor tracks
+        // to rebuild from. A played item reopens as Retry would; one that
+        // never played keeps its failure view.
+        _tvSuspend.clear();
+        if (_failedItemHasPlayed) _runReconnect();
+      } else {
+        await _restorePlayerAfterTvBackgroundSuspend();
+      }
       if (!mounted || _shuttingDown || currentPlayer != player) return;
     }
     // TV never hides the render layer on background (_handleAppHidden returns
