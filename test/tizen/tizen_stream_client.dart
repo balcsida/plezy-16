@@ -7,6 +7,13 @@ import 'package:plezy/services/playback_initialization_types.dart';
 
 import '../test_helpers/playback_report_fakes.dart';
 
+/// What the host lists for a prepared stream: the TV always has the audio
+/// track, and an empty list would leave track selection waiting for one.
+const List<Map<String, Object?>> tizenTracks = [
+  {'id': 'audio:0', 'type': 'audio', 'lang': 'eng', 'selected': true},
+  {'id': 'video:0', 'type': 'video', 'selected': true},
+];
+
 /// Resolves every item to a stream URL; [reachable] false fails the playback
 /// decision the way an unreachable server does.
 class TizenStreamClient with PlaybackReportRecorder implements MediaServerClient {

@@ -115,7 +115,7 @@ void main() {
         if (call.method == 'stop') stops++;
         if (call.method != 'open') return null;
         opens.add(Map.of(call.arguments as Map));
-        emit('ready', {'durationMs': 3600000, 'width': 1920, 'height': 1080, 'tracks': const <Object?>[]});
+        emit('ready', {'durationMs': 3600000, 'width': 1920, 'height': 1080, 'tracks': tizenTracks});
         if (opens.last['play'] == true) emit('playing', {'value': true});
         return null;
       },
