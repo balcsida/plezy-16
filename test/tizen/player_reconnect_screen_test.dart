@@ -97,7 +97,7 @@ void main() {
     final navigator = GlobalKey<NavigatorState>();
     final key = GlobalKey<VideoPlayerScreenState>();
     final opens = <Map<Object?, Object?>>[];
-    var networkUp = true;
+    var networkUp = false;
 
     PlayerBase player() => key.currentState!.player! as PlayerBase;
     void emit(String event, [Map<String, Object?> data = const {}]) {
@@ -161,16 +161,34 @@ void main() {
         );
 
         final failureView = find.text(t.messages.playbackFailedDetail(error: 'Tizen player: ConnectionFailed'));
-        await pumpUntil(tester, () => opens.length == 1, describe: () => 'opens=$opens');
-        await pumpUntil(
+        final retry = find.widgetWithText(FilledButton, t.common.retry);
+        Future<void> playhead(int ms) async {
+          // The player publishes its position at most every 250 ms of wall time.
+          await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+          emit('position', {'positionMs': ms});
+          expect(player().state.position, Duration(milliseconds: ms));
+        }
+
+        Future<void> ready() => pumpUntil(
           tester,
           () => key.currentState!.debugPlayerUiReadyForTesting,
-          describe: () => 'the first open never became ready',
+          describe: () => 'open ${opens.length} never became ready',
         );
-        // The player publishes its position at most every 250 ms of wall time.
-        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
-        emit('position', {'positionMs': 120000});
-        expect(player().state.position, const Duration(minutes: 2));
+
+        Future<void> opened(int count) =>
+            pumpUntil(tester, () => opens.length == count, describe: () => 'opens=${opens.length}, wanted $count');
+
+        // An item that never played fails at once: nothing says a reopen helps.
+        await opened(1);
+        await pumpUntil(tester, () => failureView.evaluate().isNotEmpty, describe: () => 'no failure view');
+        await tester.pump(playbackReconnectDelays[0] * 2);
+        expect(opens, hasLength(1), reason: 'an unplayed item is not retried');
+        networkUp = true;
+        await tester.tap(retry);
+        await opened(2);
+        await ready();
+        expect(failureView, findsNothing);
+        await playhead(120000);
 
         // The network goes away: the held stream dies and reopening fails too.
         networkUp = false;
@@ -178,36 +196,34 @@ void main() {
         await tester.pump();
         expect(failureView, findsNothing, reason: 'a played item is retried before it is given up');
         expect(key.currentState!.debugPlayerUiReadyForTesting, isFalse, reason: 'the loading state stands in');
-        expect(opens, hasLength(1), reason: 'the first attempt waits for its delay');
+        expect(opens, hasLength(2), reason: 'the first attempt waits for its delay');
 
         await tester.pump(playbackReconnectDelays[0]);
-        await pumpUntil(tester, () => opens.length == 2, describe: () => 'opens=$opens');
-        expect(opens[1]['startMs'], 120000, reason: 'the reopen starts at the playhead');
-        expect(opens[1]['play'], isTrue, reason: 'playback was running when the stream dropped');
+        await opened(3);
+        expect(opens[2]['startMs'], 120000, reason: 'the reopen starts at the playhead');
+        expect(opens[2]['play'], isTrue, reason: 'playback was running when the stream dropped');
         expect(failureView, findsNothing);
 
         // The network returns before the next attempt.
         networkUp = true;
         await tester.pump(playbackReconnectDelays[1]);
-        await pumpUntil(tester, () => opens.length == 3, describe: () => 'opens=$opens');
-        await pumpUntil(
-          tester,
-          () => key.currentState!.debugPlayerUiReadyForTesting,
-          describe: () => 'the recovered open never became ready',
-        );
-        expect(opens[2]['startMs'], 120000);
+        await opened(4);
+        await ready();
+        expect(opens[3]['startMs'], 120000);
         expect(failureView, findsNothing);
         expect(find.byType(SnackBar), findsNothing);
+        await playhead(180000);
 
         // A network that stays away spends what is left of the budget, and
-        // only then raises the failure view.
+        // only then raises the failure view. Recovering did not refill it.
         networkUp = false;
         emit('error', {'code': 'ConnectionFailed'});
         for (var spent = 2; spent < playbackReconnectDelays.length; spent++) {
           await tester.pump();
           expect(failureView, findsNothing, reason: 'attempt ${spent + 1} is still to come');
           await tester.pump(playbackReconnectDelays[spent]);
-          await pumpUntil(tester, () => opens.length == spent + 2, describe: () => 'opens=${opens.length}');
+          await opened(spent + 3);
+          expect(opens.last['startMs'], 180000);
         }
         await pumpUntil(tester, () => failureView.evaluate().isNotEmpty, describe: () => 'opens=${opens.length}');
         final attempted = opens.length;
@@ -216,10 +232,25 @@ void main() {
 
         // Retry is the viewer's: it reopens and refills the budget.
         networkUp = true;
-        await tester.tap(find.widgetWithText(FilledButton, t.common.retry));
-        await pumpUntil(tester, () => opens.length == attempted + 1, describe: () => 'opens=${opens.length}');
+        await tester.tap(retry);
+        await opened(attempted + 1);
         await pumpUntil(tester, () => failureView.evaluate().isEmpty, describe: () => 'failure view still up');
-        expect(opens.last['startMs'], 120000);
+        await ready();
+        expect(opens.last['startMs'], 180000);
+        await playhead(240000);
+
+        networkUp = false;
+        emit('error', {'code': 'ConnectionFailed'});
+        await tester.pump();
+        expect(failureView, findsNothing, reason: 'Retry refilled the budget');
+        await tester.pump(playbackReconnectDelays[0]);
+        await opened(attempted + 2);
+        expect(opens.last['startMs'], 240000);
+        networkUp = true;
+        await tester.pump(playbackReconnectDelays[1]);
+        await opened(attempted + 3);
+        await ready();
+        expect(failureView, findsNothing);
 
         var shutdownDone = false;
         final shutdown = PlaybackCoordinator.instance.shutdownVideo().whenComplete(() => shutdownDone = true);

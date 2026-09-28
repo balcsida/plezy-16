@@ -155,12 +155,21 @@ void main() {
         );
 
         final failureView = find.textContaining('Playback could not be started');
-        await pumpUntil(tester, () => opens.length == 1, describe: () => 'opens=$opens');
-        await pumpUntil(tester, () => key.currentState!.debugPlayerUiReadyForTesting);
-        // The player publishes its position at most every 250 ms of wall time.
-        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
-        emit('position', {'positionMs': 120000});
-        expect(player().state.position, const Duration(minutes: 2));
+        Future<void> playhead(int ms) async {
+          // The player publishes its position at most every 250 ms of wall time.
+          await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+          emit('position', {'positionMs': ms});
+          expect(player().state.position, Duration(milliseconds: ms));
+        }
+
+        Future<void> ready() => pumpUntil(
+          tester,
+          () => key.currentState!.debugPlayerUiReadyForTesting,
+          describe: () => 'open ${opens.length} never became ready',
+        );
+
+        Future<void> opened(int count) =>
+            pumpUntil(tester, () => opens.length == count, describe: () => 'opens=${opens.length}, wanted $count');
 
         Future<void> powerOff() async {
           // The host pauses natively first, then the engine reports the pause.
@@ -178,29 +187,69 @@ void main() {
           await tester.pump();
         }
 
-        // Standby froze the process before the grace timer ran, and the wake
-        // finds the server unreachable.
+        Future<void> decided(int count) => pumpUntil(
+          tester,
+          () => client.decisions == count,
+          describe: () => 'decisions=${client.decisions}, wanted $count',
+        );
+
+        await opened(1);
+        await ready();
+        await playhead(120000);
+
+        // Standby froze the process before the grace timer ran.
         await powerOff();
         expect(stops, 0, reason: 'the suspend never ran');
-        client.reachable = false;
         await powerOn();
-        await pumpUntil(tester, () => !key.currentState!.debugPlayerUiReadyForTesting);
-        expect(opens, hasLength(1), reason: 'no stream to hand to the player yet');
+        await opened(2);
+        await ready();
+        expect(opens[1]['startMs'], 120000, reason: 'the rebuild starts at the playhead');
+        expect(opens[1]['play'], isFalse, reason: 'a wake comes back paused');
+        expect(failureView, findsNothing);
+        await playhead(150000);
+
+        // The same, but the wake finds the server unreachable.
+        await powerOff();
+        client.reachable = false;
+        var decisions = client.decisions;
+        await powerOn();
+        await decided(++decisions);
+        await tester.pump();
+        expect(key.currentState!.debugPlayerUiReadyForTesting, isFalse, reason: 'the loading state stands in');
+        expect(opens, hasLength(2), reason: 'no stream to hand to the player yet');
         expect(find.byType(SnackBar), findsNothing, reason: 'a restore that will be retried is not announced');
         expect(failureView, findsNothing);
 
         await tester.pump(playbackReconnectDelays[0]);
-        await pumpUntil(tester, () => client.decisions == 3, describe: () => 'decisions=${client.decisions}');
-        expect(opens, hasLength(1));
+        await decided(++decisions);
+        await tester.pump();
+        expect(opens, hasLength(2));
+        expect(find.byType(SnackBar), findsNothing);
         expect(failureView, findsNothing);
 
         client.reachable = true;
         await tester.pump(playbackReconnectDelays[1]);
-        await pumpUntil(tester, () => opens.length == 2, describe: () => 'opens=$opens');
-        await pumpUntil(tester, () => key.currentState!.debugPlayerUiReadyForTesting);
-        expect(opens[1]['startMs'], 120000, reason: 'the rebuild starts at the playhead');
-        expect(opens[1]['play'], isFalse, reason: 'a wake comes back paused');
+        await opened(3);
+        await ready();
+        expect(opens[2]['startMs'], 150000);
+        expect(opens[2]['play'], isFalse);
         expect(failureView, findsNothing);
+        await playhead(200000);
+
+        // The held stream dies while the TV is off. Nothing is attempted in
+        // the background, where the host would refuse to play it.
+        await powerOff();
+        emit('error', {'code': 'ConnectionFailed'});
+        await tester.pump(const Duration(seconds: 20));
+        expect(opens, hasLength(3), reason: 'recovery waits for the wake');
+        expect(failureView, findsNothing);
+        await powerOn();
+        await opened(4);
+        await ready();
+        expect(opens[3]['startMs'], 200000);
+        expect(opens[3]['play'], isFalse);
+        expect(failureView, findsNothing);
+        await playhead(240000);
 
         // A standby that lets the grace timer run releases the player first.
         final stopsBefore = stops;
@@ -208,11 +257,35 @@ void main() {
         await tester.pump(const Duration(seconds: 2));
         await pumpUntil(tester, () => stops == stopsBefore + 1, describe: () => 'stops=$stops');
         await powerOn();
-        await pumpUntil(tester, () => opens.length == 3, describe: () => 'opens=$opens');
-        await pumpUntil(tester, () => key.currentState!.debugPlayerUiReadyForTesting);
-        expect(opens[2]['startMs'], 120000);
-        expect(opens[2]['play'], isFalse);
+        await opened(5);
+        await ready();
+        expect(opens[4]['startMs'], 240000);
+        expect(opens[4]['play'], isFalse);
         expect(failureView, findsNothing);
+
+        // A server that stays away spends the whole budget, which the wake
+        // refilled, and only then raises the failure view.
+        await powerOff();
+        client.reachable = false;
+        decisions = client.decisions;
+        await powerOn();
+        await decided(++decisions);
+        for (final delay in playbackReconnectDelays) {
+          await tester.pump();
+          expect(failureView, findsNothing, reason: 'attempt ${client.decisions - decisions + 1} is still to come');
+          await tester.pump(delay);
+          await decided(++decisions);
+        }
+        await pumpUntil(tester, () => failureView.evaluate().isNotEmpty, describe: () => 'no failure view');
+        expect(opens, hasLength(5));
+        await tester.pump(const Duration(minutes: 2));
+        expect(client.decisions, decisions, reason: 'a spent budget arms nothing');
+
+        client.reachable = true;
+        await tester.tap(find.widgetWithText(FilledButton, t.common.retry));
+        await opened(6);
+        await pumpUntil(tester, () => failureView.evaluate().isEmpty, describe: () => 'failure view still up');
+        expect(opens[5]['startMs'], 240000);
 
         var shutdownDone = false;
         final shutdown = PlaybackCoordinator.instance.shutdownVideo().whenComplete(() => shutdownDone = true);
