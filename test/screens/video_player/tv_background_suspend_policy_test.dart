@@ -48,6 +48,30 @@ void main() {
     );
   });
 
+  bool rebuild({bool suspended = false, bool isTizen = true, bool isLive = false, bool openSettled = true}) =>
+      shouldRebuildPlayerOnResume(
+        suspended: suspended,
+        isTizen: isTizen,
+        isTv: true,
+        isLive: isLive,
+        openSettled: openSettled,
+      );
+
+  test('Tizen rebuilds on every resume, whether or not the suspend ran first', () {
+    expect(rebuild(), isTrue);
+    expect(rebuild(suspended: true), isTrue);
+  });
+
+  test('Android TV rebuilds only what its suspend released', () {
+    expect(rebuild(isTizen: false), isFalse);
+    expect(rebuild(isTizen: false, suspended: true), isTrue);
+  });
+
+  test('a resume never rebuilds live TV or an open that is still in flight', () {
+    expect(rebuild(isLive: true), isFalse);
+    expect(rebuild(openSettled: false), isFalse);
+  });
+
   test('TV backgrounding stops non-resumable live sessions', () {
     expect(shouldStopLiveSessionForTvBackground(isTv: true, policy: LiveTvBackgroundPolicy.stopAndExit), isTrue);
   });

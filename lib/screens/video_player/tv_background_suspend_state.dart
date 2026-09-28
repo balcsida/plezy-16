@@ -29,9 +29,8 @@ class TvBackgroundSuspendState {
   static const Duration playerSuspendGrace = Duration(seconds: 30);
 
   /// Tizen's grace: powering the TV off pauses the app on its way into
-  /// standby, so the release has to land before the process is frozen.
-  // ponytail: a guess at standby entry timing; if the stop still loses that
-  // race on hardware, drop to zero and let the busy re-arm poll faster.
+  /// standby. A release that lands first frees the decoder and reports the
+  /// stop; one that loses to the freeze is covered by the rebuild on resume.
   static const Duration tizenPlayerSuspendGrace = Duration(seconds: 1);
 
   /// Redelivery schedule for the suspend-time stopped report. Standby entry

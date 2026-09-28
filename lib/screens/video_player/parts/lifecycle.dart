@@ -192,7 +192,20 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
     // A TV background suspend released the native pipeline via stop();
     // rebuild the playback session in place before the media-control restore
     // below can act on the stopped player.
-    if (_tvSuspend.suspended) {
+    final isTizen = PlatformDetector.isTizen();
+    if (shouldRebuildPlayerOnResume(
+      suspended: _tvSuspend.suspended,
+      isTizen: isTizen,
+      isTv: PlatformDetector.isTV(),
+      isLive: widget.isLive,
+      openSettled: _firstFrame.uiReady.value || _hasFatalPlaybackError,
+    )) {
+      if (isTizen) {
+        _reconnect.reset();
+        // The host paused natively before Dart saw the lifecycle message, so
+        // the intent never learned of it; a wake comes back paused.
+        _playbackIntentShouldPlay = false;
+      }
       await _restorePlayerAfterTvBackgroundSuspend();
       if (!mounted || _shuttingDown || currentPlayer != player) return;
     }
@@ -404,7 +417,9 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
     _recordLifecycleState('resumed', action: 'tv_background_suspend_reload');
     final outcome = await _reloadMediaInPlace(
       metadata: _currentMetadata,
-      resumePosition: restore.position,
+      // A rebuild whose suspend never ran has no snapshot; the player keeps
+      // its position and tracks across a stop.
+      resumePosition: restore.position ?? currentPlayer.state.position,
       preserveCurrentTrackSelection: true,
       preservedAudioTrack: restore.audioTrack,
       preservedSubtitleTrack: SubtitlePreference.trackOrNull(restore.subtitleTrack),
