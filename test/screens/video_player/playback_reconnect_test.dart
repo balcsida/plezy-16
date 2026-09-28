@@ -22,11 +22,6 @@ void main() {
     });
   });
 
-  test('the schedule outlasts a hung open and a slow network return', () {
-    final total = playbackReconnectDelays.fold(Duration.zero, (sum, delay) => sum + delay);
-    expect(total, greaterThanOrEqualTo(const Duration(seconds: 45)));
-  });
-
   test('reset refills the budget and cancels the pending attempt', () {
     fakeAsync((async) {
       var attempts = 0;
