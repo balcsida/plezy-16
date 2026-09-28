@@ -115,7 +115,11 @@ class PlayerTizen extends PlayerBase with VideoRectSupport {
         // Only enum-like error codes from the bridge, never native exception text.
         final code = data?['code'];
         final safeCode = code is String && RegExp(r'^[A-Za-z0-9_]{1,80}$').hasMatch(code) ? code : 'playback';
-        super.handlePlayerEvent('end-file', {'reason': 'error', 'message': 'Tizen player: $safeCode'});
+        super.handlePlayerEvent('end-file', {
+          'reason': 'error',
+          'message': 'Tizen player: $safeCode',
+          if (safeCode == 'ConnectionFailed') 'cause': PlayerError.connectionFailed,
+        });
     }
   }
 

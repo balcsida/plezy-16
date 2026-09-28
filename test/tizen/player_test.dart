@@ -53,6 +53,21 @@ void main() {
     expect(player.state.playing, isFalse);
   });
 
+  test('only a connection failure is tagged as one', () async {
+    final player = PlayerTizen();
+    addTearDown(player.dispose);
+    final errors = <PlayerError>[];
+    final subscription = player.streams.error.listen(errors.add);
+    addTearDown(subscription.cancel);
+    for (final code in ['ConnectionFailed', 'NotSupportedFile']) {
+      await player.open(Media('https://example.test/video.mp4'), play: false);
+      event(player, Map.of(calls.last.arguments as Map), 'error', {'code': code});
+      await Future<void>.delayed(Duration.zero);
+    }
+    expect(errors.map((e) => e.cause), [PlayerError.connectionFailed, null]);
+    expect(errors.map((e) => e.message), ['Tizen player: ConnectionFailed', 'Tizen player: NotSupportedFile']);
+  });
+
   test('seeks are serialized and coalesce to the most recent target', () async {
     final player = PlayerTizen();
     addTearDown(player.dispose);

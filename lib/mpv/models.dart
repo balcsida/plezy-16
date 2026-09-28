@@ -70,6 +70,11 @@ sealed class PlayerError with _$PlayerError {
   /// error's message.
   static const String streamInitFailed = 'stream-init-failed';
 
+  /// Cause tag for a stream the backend could not reach, or lost: the network
+  /// or the server, not the media. Tizen reports a refused connection and a
+  /// server that sent nothing for thirty seconds this way.
+  static const String connectionFailed = 'connection-failed';
+
   /// Cause tag for an audio device that stopped taking audio (or never
   /// could) after the native core's own bounded recovery. A device fault, not
   /// a stream fault: no stream retry, quality change, or backend switch can
