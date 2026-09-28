@@ -417,6 +417,8 @@ extension _VideoPlayerReloadMethods on VideoPlayerScreenState {
 
     try {
       final currentPlayer = existingPlayer;
+      // Beginning the attempt cancels a pending reconnect; a rollback owes it back.
+      final reconnectWasPending = _reconnect.pending;
       final attempt = _beginPlaybackAttempt(currentPlayer, isMediaReload: true);
       // A reload wants termination to stop it too: unlike a start, it has a
       // committed previous session to roll back to rather than an error view
@@ -813,6 +815,7 @@ extension _VideoPlayerReloadMethods on VideoPlayerScreenState {
           _firstFrame.restore(previousFirstFrame);
           _hasFatalPlaybackError = previousHasFatalPlaybackError;
           _currentOpenRequest = previousOpenRequest;
+          if (reconnectWasPending) _reconnectAfterUnopenedReload(MediaReloadOutcome.failed);
           // If the stop report already went out, un-latch the tracker so the
           // resumed session keeps reporting (and its eventual real stop sends).
           _progressTracker?.resumeAfterStoppedReport();

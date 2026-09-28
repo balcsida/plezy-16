@@ -33,6 +33,9 @@ class PlaybackReconnect {
 
   bool get hasBudget => _spent < delays.length;
 
+  /// Whether an attempt is armed and has not fired.
+  bool get pending => _timer != null;
+
   /// Arms the next attempt, replacing a pending one. Returns false, arming
   /// nothing, once the budget is spent.
   bool schedule() {
