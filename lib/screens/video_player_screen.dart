@@ -1274,6 +1274,9 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen>
   final FirstFrameGate _firstFrame = FirstFrameGate();
   bool _hasFatalPlaybackError = false;
 
+  /// The cause tag of the failure [_hasFatalPlaybackError] stands for.
+  String? _latchedFailureCause;
+
   final ValueNotifier<bool> _isExiting = ValueNotifier<bool>(false);
   final PlayerChromeController _chromeController = PlayerChromeController(
     initiallyVisible: playerChromeStartsVisible(isTv: PlatformDetector.isTV()),

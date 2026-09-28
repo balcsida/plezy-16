@@ -420,10 +420,10 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
     _reconnect.reset();
     if (_hasFatalPlaybackError) {
       // A failure stands, so the player holds neither playhead nor tracks
-      // to rebuild from. A played item reopens as Retry would; one that
-      // never played keeps its failure view.
+      // to rebuild from. What a reopen may recover reopens as Retry would;
+      // anything else keeps its failure view.
       _tvSuspend.clear();
-      if (_failedItemHasPlayed) _runReconnect();
+      if (_canReconnect) _runReconnect();
       return;
     }
     await _restorePlayerAfterTvBackgroundSuspend(startPaused: !_playbackIntentShouldPlay);

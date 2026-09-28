@@ -22,19 +22,24 @@ extension _VideoPlayerErrorMethods on VideoPlayerScreenState {
     return state == AppLifecycleState.hidden || state == AppLifecycleState.paused;
   }
 
-  /// Whether reopening may recover a failure. Tizen has no reconnect loop, so
-  /// one dropped connection ends playback, and after standby the network can
-  /// lag the wake. Only the item that already played here is retried: one
-  /// that never opened still fails at once.
-  bool get _canReconnect {
+  /// Whether reopening may recover a failure with [cause]. Tizen has no
+  /// reconnect loop, so one dropped connection ends playback, and after
+  /// standby the network can lag the wake. An item that played here is
+  /// retried whatever it raised. One that never played is retried only when
+  /// the stream could not be reached: a server slow to start sending times
+  /// out the first open too. Any other failure of it is its own.
+  bool _canReconnectAfter(String? cause) {
     return PlatformDetector.isTizen() &&
         !widget.isLive &&
         !_isOfflinePlayback &&
-        _failedItemHasPlayed &&
+        (_failedItemHasPlayed || cause == PlayerError.connectionFailed) &&
         // A source the viewer just picked fails in the open, not the network.
         !_sourceSwitchInFlight &&
         (_appBackgrounded || _reconnect.hasBudget);
   }
+
+  /// [_canReconnectAfter] for the failure that stands.
+  bool get _canReconnect => _canReconnectAfter(_latchedFailureCause);
 
   /// Whether the open on record is for the item that already played here.
   bool get _failedItemHasPlayed {
@@ -97,7 +102,7 @@ extension _VideoPlayerErrorMethods on VideoPlayerScreenState {
       liveRetrying: _live.retrying,
       liveFallbackLevel: _live.fallbackLevel,
       liveRetryFailed: _live.retryFailed,
-      canReconnect: _canReconnect,
+      canReconnect: _canReconnectAfter(err.cause),
     );
 
     switch (action) {
@@ -171,6 +176,7 @@ extension _VideoPlayerErrorMethods on VideoPlayerScreenState {
   /// user stop.
   void _latchFatalPlaybackError(PlaybackFailureAction action, {String? cause}) {
     _hasFatalPlaybackError = true;
+    _latchedFailureCause = cause;
     _progressTracker?.stopTracking();
     _abortCurrentOpen('player error: ${action.name}');
     _detachWatchTogetherAfterFailure();
