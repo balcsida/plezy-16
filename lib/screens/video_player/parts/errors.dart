@@ -42,6 +42,21 @@ extension _VideoPlayerErrorMethods on VideoPlayerScreenState {
     return working != null && working.metadata.globalKey == _currentOpenRequest?.metadata.globalKey;
   }
 
+  /// A reload opened nothing and raised no player error: continue the
+  /// schedule, or give up when it is spent or a reopen cannot change the
+  /// answer.
+  void _reconnectAfterUnopenedReload(MediaReloadOutcome outcome) {
+    final reason = outcome == MediaReloadOutcome.failed ? _episode.lastReloadFailureReason : null;
+    final retryable =
+        reason != PlaybackFailureReason.authenticationRequired && reason != PlaybackFailureReason.invalidPlaybackData;
+    if (retryable && _canReconnect) {
+      if (!_hasFatalPlaybackError) _latchFatalPlaybackError(PlaybackFailureAction.reconnect);
+      _awaitReconnect();
+    } else if (_playbackFailureMessage == null) {
+      _presentPlaybackFailure(t.messages.playbackFailed);
+    }
+  }
+
   /// Keep the loading state up for a failure that will be retried. A failure
   /// that lands in the background waits for the resume to rebuild the player.
   void _awaitReconnect() {
@@ -268,10 +283,7 @@ extension _VideoPlayerErrorMethods on VideoPlayerScreenState {
     // an automatic attempt that found the player busy tries again later.
     final unopened = outcome == MediaReloadOutcome.failed || (automatic && outcome == MediaReloadOutcome.rejected);
     if (!unopened || !mounted) return;
-    if (automatic && _canReconnect) {
-      _awaitReconnect();
-      return;
-    }
+    if (automatic) return _reconnectAfterUnopenedReload(outcome);
     if (_playbackFailureMessage == null) _presentPlaybackFailure(t.messages.playbackFailed);
   }
 
