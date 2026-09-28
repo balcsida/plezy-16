@@ -1330,6 +1330,10 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen>
   @visibleForTesting
   bool get debugPlaybackParkedForTesting => _eofRecovery.parked;
 
+  /// False while the loading state covers the player.
+  @visibleForTesting
+  bool get debugPlayerUiReadyForTesting => _firstFrame.uiReady.value;
+
   @visibleForTesting
   Future<void> debugSeekPlaybackForTesting(Duration position) => _seekPlayback(position);
 
