@@ -12,6 +12,9 @@ import '../test_helpers/playback_report_fakes.dart';
 class TizenStreamClient with PlaybackReportRecorder implements MediaServerClient {
   bool reachable = true;
 
+  /// Playback decisions asked for, answered or not.
+  int decisions = 0;
+
   @override
   ServerId get serverId => ServerId('srv-1');
   @override
@@ -29,6 +32,7 @@ class TizenStreamClient with PlaybackReportRecorder implements MediaServerClient
 
   @override
   Future<PlaybackInitializationResult> getPlaybackInitialization(PlaybackInitializationOptions options) async {
+    decisions++;
     if (!reachable) throw StateError('server unreachable');
     return PlaybackInitializationResult(
       availableVersions: const [],
