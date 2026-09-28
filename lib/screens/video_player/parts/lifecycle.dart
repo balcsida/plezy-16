@@ -426,7 +426,8 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
       preservedSecondarySubtitleTrack: SubtitlePreference.trackOrNull(restore.secondarySubtitleTrack),
       startPaused: true,
       // A failure raises the failure view below instead: a snackbar would sit
-      // over a player whose pipeline the suspend already released.
+      // over a player whose pipeline the suspend already released. On Tizen a
+      // failed restore is retried before it is announced.
       showErrorUi: false,
       reason: 'TV background suspend restore',
     );
@@ -436,9 +437,16 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
       appLogger.w('TV background suspend restore: in-place reload rejected');
     } else if (outcome == MediaReloadOutcome.failed) {
       appLogger.w('TV background suspend restore: in-place reload failed');
-      // The rollback kept the suspended session, which stop() left with
-      // nothing to play; Retry re-runs the open from the playhead.
-      if (mounted && _playbackFailureMessage == null) _presentPlaybackFailure(t.messages.playbackFailed);
+      // Nothing was opened, so no player error follows: the server was not
+      // reachable yet. Without this the screen is left on a released player.
+      if (_canReconnect) {
+        _latchFatalPlaybackError(PlaybackFailureAction.reconnect);
+        _awaitReconnect();
+      } else if (mounted && _playbackFailureMessage == null) {
+        // The rollback kept the suspended session, which stop() left with
+        // nothing to play; Retry re-runs the open from the playhead.
+        _presentPlaybackFailure(t.messages.playbackFailed);
+      }
     }
   }
 }
