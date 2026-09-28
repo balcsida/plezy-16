@@ -24,6 +24,7 @@ import 'package:plezy/services/download_storage_service.dart';
 import 'package:plezy/services/music/music_playback_service.dart';
 import 'package:plezy/services/offline_watch_sync_service.dart';
 import 'package:plezy/services/playback_coordinator.dart';
+import 'package:plezy/services/playback_initialization_types.dart';
 import 'package:plezy/services/settings_service.dart';
 import 'package:plezy/utils/video_player_navigation.dart';
 import 'package:plezy/watch_together/providers/watch_together_provider.dart';
@@ -304,6 +305,24 @@ void main() {
         await tester.pump(wakeCheckPeriod * 2);
         await settle();
         expect(opens, hasLength(7), reason: 'one wake, one rebuild');
+
+        // A wake the server answers with a refusal no reopen can change: the
+        // failure shows at once, over a player that was stopped.
+        await tester.sendKeyEvent(LogicalKeyboardKey.space);
+        await pumpUntil(tester, () => calls.last == 'play', describe: () => 'calls=$calls');
+        emit('playing', {'value': true});
+        await playhead(1500000);
+        client.refusal = const PlaybackException('refused', reason: PlaybackFailureReason.authenticationRequired);
+        decisions = client.decisions;
+        await standby();
+        await decided(++decisions);
+        await pumpUntil(tester, () => failureView.evaluate().isNotEmpty, describe: () => 'no failure view');
+        expect(calls.last, 'stop', reason: 'the rollback restarted the held player: $calls');
+        await tester.pump(playbackReconnectDelays[0] * 2);
+        await settle();
+        expect(client.decisions, decisions, reason: 'a refusal is not retried');
+        expect(opens, hasLength(7));
+        client.refusal = null;
 
         var shutdownDone = false;
         final shutdown = PlaybackCoordinator.instance.shutdownVideo().whenComplete(() => shutdownDone = true);

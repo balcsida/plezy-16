@@ -22,6 +22,9 @@ class TizenStreamClient with PlaybackReportRecorder implements MediaServerClient
   /// Playback decisions asked for, answered or not.
   int decisions = 0;
 
+  /// What a reachable server refuses the decision with, if anything.
+  PlaybackException? refusal;
+
   @override
   ServerId get serverId => ServerId('srv-1');
   @override
@@ -41,6 +44,7 @@ class TizenStreamClient with PlaybackReportRecorder implements MediaServerClient
   Future<PlaybackInitializationResult> getPlaybackInitialization(PlaybackInitializationOptions options) async {
     decisions++;
     if (!reachable) throw StateError('server unreachable');
+    if (refusal case final refusal?) throw refusal;
     return PlaybackInitializationResult(
       availableVersions: const [],
       videoUrl: 'https://example.invalid/${options.metadata.id}',

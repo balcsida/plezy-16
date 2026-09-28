@@ -97,8 +97,11 @@ void main() {
     final navigator = GlobalKey<NavigatorState>();
     final key = GlobalKey<VideoPlayerScreenState>();
     final opens = <Map<Object?, Object?>>[];
-    // What the host answers an open with; null prepares the stream.
-    String? failure = 'NotSupportedFile';
+    // What the host answers an open with: an error code, 'silent' for a
+    // stream that never arrives, or null to prepare it.
+    String? failure = 'silent';
+    Completer<void>? silentOpen;
+    final calls = <String>[];
 
     PlayerBase player() => key.currentState!.player! as PlayerBase;
     void emit(String event, [Map<String, Object?> data = const {}]) {
@@ -114,12 +117,22 @@ void main() {
       methodChannelName: 'com.plezy/tizen_player',
       eventChannelName: 'com.plezy/tizen_player/events',
       methodHandler: (call) async {
+        calls.add(call.method);
+        // Releasing the player cancels a prepare that is still waiting.
+        if (call.method == 'stop' || call.method == 'open') silentOpen?.complete();
+        silentOpen = null;
         if (call.method != 'open') return null;
         opens.add(Map.of(call.arguments as Map));
+        if (failure == 'silent') {
+          final pending = silentOpen = Completer<void>();
+          await pending.future;
+          return null;
+        }
         if (failure case final code?) {
-          // The host reports the failed prepare, releases, and only then
-          // completes the call.
+          // Measured on the TV: the host reports the failed prepare, releases
+          // the player, and completes the call about a second later.
           emit('error', {'code': code});
+          await Future<void>.delayed(const Duration(seconds: 1));
           return null;
         }
         emit('ready', {'durationMs': 3600000, 'width': 1920, 'height': 1080, 'tracks': tizenTracks});
@@ -155,6 +168,8 @@ void main() {
                 serverId: 'srv-1',
                 title: 'Standby',
                 backend: MediaBackend.jellyfin,
+                durationMs: 3600000,
+                viewOffsetMs: 600000,
               ),
               selectedQualityPreset: TranscodeQualityPreset.original,
             ),
@@ -179,58 +194,98 @@ void main() {
         Future<void> opened(int count) =>
             pumpUntil(tester, () => opens.length == count, describe: () => 'opens=${opens.length}, wanted $count');
 
-        // An item that never played fails at once on what a reopen cannot change.
         final unsupported = find.text(t.messages.playbackFailedDetail(error: 'Tizen player: NotSupportedFile'));
-        await opened(1);
-        await pumpUntil(tester, () => unsupported.evaluate().isNotEmpty, describe: () => 'no failure view');
-        await tester.pump(playbackReconnectDelays[0] * 2);
-        expect(opens, hasLength(1), reason: 'an unplayed item is not retried for that');
 
-        // A stream it could not reach is retried, played or not: measured on
-        // the TV, a server slow to start sending timed out two first opens.
-        failure = 'ConnectionFailed';
-        await tester.tap(retry);
-        await opened(2);
+        Future<void> powerOff() async {
+          for (final state in [AppLifecycleState.inactive, AppLifecycleState.hidden, AppLifecycleState.paused]) {
+            tester.binding.handleAppLifecycleStateChanged(state);
+          }
+          await tester.pump();
+        }
+
+        Future<void> powerOn() async {
+          for (final state in [AppLifecycleState.hidden, AppLifecycleState.inactive, AppLifecycleState.resumed]) {
+            tester.binding.handleAppLifecycleStateChanged(state);
+          }
+          await tester.pump();
+        }
+
+        void expectStillLoading(String reason) {
+          expect(find.textContaining('Playback could not be started'), findsNothing, reason: reason);
+          expect(find.byType(SnackBar), findsNothing, reason: reason);
+          expect(key.currentState!.debugPlayerUiReadyForTesting, isFalse, reason: reason);
+        }
+
+        // The first open of an item never arrives. The screen's own deadline
+        // can beat the backend's timeout to it; either way it is retried.
+        await opened(1);
+        await tester.pump(const Duration(seconds: 30));
         await tester.pump();
-        expect(unsupported, findsNothing);
-        expect(failureView, findsNothing);
-        expect(key.currentState!.debugPlayerUiReadyForTesting, isFalse, reason: 'the loading state stands in');
-        failure = null;
+        expectStillLoading('an open that timed out is retried');
+        expect(opens, hasLength(1));
+
+        failure = 'ConnectionFailed';
         var spent = 0;
         await tester.pump(playbackReconnectDelays[spent++]);
+        await opened(2);
+        expect(opens[1]['startMs'], 600000, reason: 'an unplayed item reopens where it would have started');
+        expect(opens[1]['play'], isTrue);
+        await tester.pump(const Duration(seconds: 1));
+        expectStillLoading('a stream that could not be reached is retried');
+
+        // The TV goes off before the next attempt. None runs in the
+        // background, and the wake reopens what the failure left standing.
+        await powerOff();
+        await tester.pump(playbackReconnectDelays[spent] * 2);
+        expect(opens, hasLength(2), reason: 'no attempt in the background');
+        failure = 'NotSupportedFile';
+        await powerOn();
         await opened(3);
+        expect(opens[2]['startMs'], 600000);
+        expect(opens[2]['play'], isFalse, reason: 'a resume comes back paused');
+
+        // An item that never played fails at once on what a reopen cannot change.
+        await pumpUntil(tester, () => unsupported.evaluate().isNotEmpty, describe: () => 'no failure view');
+        await tester.pump(playbackReconnectDelays[0] * 2);
+        expect(opens, hasLength(3), reason: 'an unplayed item is not retried for that');
+
+        failure = null;
+        await tester.tap(retry);
+        await opened(4);
         await ready();
-        expect(
-          opens[2]['startMs'],
-          opens[0]['startMs'],
-          reason: 'an unplayed item reopens where it would have started',
-        );
+        expect(opens[3]['startMs'], 600000);
+        expect(unsupported, findsNothing);
         expect(failureView, findsNothing);
-        await playhead(120000);
+        await tester.sendKeyEvent(LogicalKeyboardKey.space);
+        await pumpUntil(tester, () => calls.contains('play'), describe: () => 'calls=$calls');
+        emit('playing', {'value': true});
+        await playhead(1200000);
+        spent = 0;
+        var count = opens.length;
 
         // The network goes away: the held stream dies and reopening fails too.
         failure = 'ConnectionFailed';
         emit('error', {'code': 'ConnectionFailed'});
         await tester.pump();
-        expect(failureView, findsNothing, reason: 'a played item is retried before it is given up');
-        expect(key.currentState!.debugPlayerUiReadyForTesting, isFalse);
-        expect(opens, hasLength(3), reason: 'the attempt waits for its delay');
+        expectStillLoading('a played item is retried before it is given up');
+        expect(opens, hasLength(count), reason: 'the attempt waits for its delay');
 
         await tester.pump(playbackReconnectDelays[spent++]);
-        await opened(4);
-        expect(opens[3]['startMs'], 120000, reason: 'the reopen starts at the playhead');
-        expect(opens[3]['play'], isTrue, reason: 'playback was running when the stream dropped');
-        expect(failureView, findsNothing);
+        await opened(++count);
+        expect(opens.last['startMs'], 1200000, reason: 'the reopen starts at the playhead');
+        expect(opens.last['play'], isTrue, reason: 'playback was running when the stream dropped');
+        await tester.pump(const Duration(seconds: 1));
+        expectStillLoading('the reopen failed too');
 
         // The network returns before the next attempt.
         failure = null;
         await tester.pump(playbackReconnectDelays[spent++]);
-        await opened(5);
+        await opened(++count);
         await ready();
-        expect(opens[4]['startMs'], 120000);
+        expect(opens.last['startMs'], 1200000);
         expect(failureView, findsNothing);
         expect(find.byType(SnackBar), findsNothing);
-        await playhead(180000);
+        await playhead(1800000);
 
         // A network that stays away spends what is left of the budget, and
         // only then raises the failure view. Recovering did not refill it.
@@ -240,33 +295,34 @@ void main() {
           await tester.pump();
           expect(failureView, findsNothing, reason: 'attempt ${spent + 1} is still to come');
           await tester.pump(playbackReconnectDelays[spent++]);
-          await opened(spent + 2);
-          expect(opens.last['startMs'], 180000);
+          await opened(++count);
+          expect(opens.last['startMs'], 1800000);
+          await tester.pump(const Duration(seconds: 1));
         }
         await pumpUntil(tester, () => failureView.evaluate().isNotEmpty, describe: () => 'opens=${opens.length}');
-        final attempted = opens.length;
         await tester.pump(const Duration(minutes: 2));
-        expect(opens, hasLength(attempted), reason: 'a spent budget arms nothing');
+        expect(opens, hasLength(count), reason: 'a spent budget arms nothing');
 
         // Retry is the viewer's: it reopens and refills the budget.
         failure = null;
         await tester.tap(retry);
-        await opened(attempted + 1);
+        await opened(++count);
         await pumpUntil(tester, () => failureView.evaluate().isEmpty, describe: () => 'failure view still up');
         await ready();
-        expect(opens.last['startMs'], 180000);
-        await playhead(240000);
+        expect(opens.last['startMs'], 1800000);
+        await playhead(2400000);
 
         failure = 'ConnectionFailed';
         emit('error', {'code': 'ConnectionFailed'});
         await tester.pump();
         expect(failureView, findsNothing, reason: 'Retry refilled the budget');
         await tester.pump(playbackReconnectDelays[0]);
-        await opened(attempted + 2);
-        expect(opens.last['startMs'], 240000);
+        await opened(++count);
+        expect(opens.last['startMs'], 2400000);
+        await tester.pump(const Duration(seconds: 1));
         failure = null;
         await tester.pump(playbackReconnectDelays[1]);
-        await opened(attempted + 3);
+        await opened(++count);
         await ready();
         expect(failureView, findsNothing);
 
