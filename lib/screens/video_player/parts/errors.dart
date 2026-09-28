@@ -26,13 +26,14 @@ extension _VideoPlayerErrorMethods on VideoPlayerScreenState {
   /// reconnect loop, so one dropped connection ends playback, and after
   /// standby the network can lag the wake. An item that played here is
   /// retried whatever it raised. One that never played is retried only when
-  /// the stream could not be reached: a server slow to start sending times
-  /// out the first open too. Any other failure of it is its own.
+  /// the stream did not arrive: a server slow to start sending times out the
+  /// first open too, and the backend's timeout and the screen's own deadline
+  /// fall within a second of each other. Any other failure of it is its own.
   bool _canReconnectAfter(String? cause) {
     return PlatformDetector.isTizen() &&
         !widget.isLive &&
         !_isOfflinePlayback &&
-        (_failedItemHasPlayed || cause == PlayerError.connectionFailed) &&
+        (_failedItemHasPlayed || cause == PlayerError.connectionFailed || cause == PlayerError.openTimedOut) &&
         // A source the viewer just picked fails in the open, not the network.
         !_sourceSwitchInFlight &&
         (_appBackgrounded || _reconnect.hasBudget);
