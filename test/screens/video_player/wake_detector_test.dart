@@ -39,6 +39,8 @@ void main() {
       run(async, const Duration(minutes: 1));
       // Measured on the TV: 308 s of standby the monotonic clock never saw.
       wall = wall.add(const Duration(seconds: 308));
+      run(async, wakeSettle);
+      expect(wakes, isEmpty, reason: 'it has not kept running for long enough yet');
       run(async, wakeCheckPeriod);
       expect(wakes, [const Duration(seconds: 308)]);
       run(async, const Duration(minutes: 5));
@@ -64,10 +66,28 @@ void main() {
       // Forty seconds in which neither this timer nor anything else ran.
       wall = wall.add(const Duration(seconds: 40));
       mono += const Duration(seconds: 40);
-      run(async, wakeCheckPeriod);
+      run(async, wakeCheckPeriod + wakeSettle);
       expect(wakes, [const Duration(seconds: 40)]);
       run(async, const Duration(minutes: 5));
       expect(wakes, hasLength(1));
+      detector.stop();
+    });
+  });
+
+  test('the brief wakes of a TV in standby are never acted on', () {
+    fakeAsync((async) {
+      detector.start();
+      run(async, const Duration(minutes: 3));
+      // Measured on the TV: two hours of sleeping some 293 s and running
+      // for six to eight, then one sleep until the power comes back.
+      for (var cycle = 0; cycle < 24; cycle++) {
+        wall = wall.add(const Duration(seconds: 293));
+        run(async, const Duration(seconds: 8));
+      }
+      expect(wakes, isEmpty);
+      wall = wall.add(const Duration(hours: 9, minutes: 28));
+      run(async, wakeCheckPeriod + wakeSettle);
+      expect(wakes, [const Duration(hours: 9, minutes: 28)]);
       detector.stop();
     });
   });

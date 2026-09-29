@@ -9,6 +9,15 @@ const Duration wakeCheckPeriod = Duration(seconds: 2);
 /// counts as a suspend rather than a clock correction.
 const Duration wakeGapThreshold = Duration(seconds: 5);
 
+/// How long the process has to keep running after a wake for it to count.
+///
+/// Measured on a UE55AU7022KXXH: for two hours after power-off the TV wakes
+/// every five minutes and runs for six to eight seconds with its panel dark.
+/// Acting on those reloaded the video fourteen times in one night.
+// ponytail: the wait is the price of having no panel signal; drop it for one
+// if the TV turns out to report its display state.
+const Duration wakeSettle = Duration(seconds: 12);
+
 /// Notices that the process was stopped without anybody telling it.
 ///
 /// A Samsung TV powers off into standby without pausing the app. Measured on
@@ -41,8 +50,13 @@ class WakeDetector {
   late DateTime _wall;
   late Duration _mono;
 
+  /// What the wake being waited out was missing, and the checks since.
+  Duration? _missed;
+  int _checksSinceWake = 0;
+
   void start() {
     stop();
+    _missed = null;
     _wall = _wallClock();
     _mono = _monotonic();
     _timer = Timer.periodic(wakeCheckPeriod, (_) => _check());
@@ -65,10 +79,21 @@ class WakeDetector {
     final frozen = ran - wakeCheckPeriod;
     _wall = wall;
     _mono = mono;
-    if (suspended >= wakeGapThreshold) {
-      onWake(suspended);
-    } else if (frozen >= wakeGapThreshold) {
-      onWake(frozen);
+    final missed = suspended >= wakeGapThreshold
+        ? suspended
+        : frozen >= wakeGapThreshold
+        ? frozen
+        : null;
+    if (missed != null) {
+      // Stopped again before it settled: the wait starts over.
+      _missed = missed;
+      _checksSinceWake = 0;
+      return;
     }
+    final waited = _missed;
+    // Counted in checks, which stop with the process, not read off a clock.
+    if (waited == null || wakeCheckPeriod * ++_checksSinceWake < wakeSettle) return;
+    _missed = null;
+    onWake(waited);
   }
 }

@@ -197,6 +197,9 @@ void main() {
         Future<void> standby() async {
           sleep();
           await tester.pump(wakeCheckPeriod);
+          // It counts once the process has kept running: a TV in standby
+          // wakes for a few seconds every five minutes.
+          await tester.pump(wakeSettle);
         }
 
         /// Rounds of the test clock and of the real loop, for what must not follow.
@@ -218,6 +221,14 @@ void main() {
         await opened(1);
         await ready();
         await playhead(1121000);
+
+        // The few seconds a TV in standby wakes for are not a wake to act on.
+        sleep();
+        await tester.pump(const Duration(seconds: 8));
+        sleep();
+        await tester.pump(const Duration(seconds: 8));
+        await settle();
+        expect(opens, hasLength(1), reason: 'the panel is dark');
 
         // Standby while playing: a new player, playing on from the playhead.
         await standby();
@@ -289,7 +300,7 @@ void main() {
         await powerOn();
         await opened(6);
         await ready();
-        await tester.pump(wakeCheckPeriod * 2);
+        await tester.pump(wakeCheckPeriod + wakeSettle);
         await settle();
         expect(opens, hasLength(6), reason: 'one wake, one rebuild');
 
@@ -302,7 +313,7 @@ void main() {
         await powerOn();
         await opened(7);
         await ready();
-        await tester.pump(wakeCheckPeriod * 2);
+        await tester.pump(wakeCheckPeriod + wakeSettle);
         await settle();
         expect(opens, hasLength(7), reason: 'one wake, one rebuild');
 
