@@ -13,8 +13,5 @@
     <privilege>http://tizen.org/privilege/network.get</privilege>
     <privilege>http://tizen.org/privilege/display</privilege>
     <privilege>http://tizen.org/privilege/appmanager.launch</privilege>
-    <!-- Required by FlutterApplication.IsTopLevel, which keeps the UI window above
-         the separate video window. Public level; no partner/platform privilege. -->
-    <privilege>http://tizen.org/privilege/window.priority.set</privilege>
   </privileges>
 </manifest>

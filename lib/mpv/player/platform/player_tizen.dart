@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
+import '../../../utils/app_logger.dart';
 import '../../models.dart';
 import '../player_base.dart';
 import '../video_rect_support.dart';
@@ -15,6 +17,8 @@ class PlayerTizen extends PlayerBase with VideoRectSupport {
   final bool audioOnly;
   static const _methods = MethodChannel('com.plezy/tizen_player');
   static const _events = EventChannel('com.plezy/tizen_player/events');
+  // The embedder's own channel, the one flutter-tizen's tizen_window_manager wraps.
+  static const _window = MethodChannel('tizen/internal/window');
   @override
   MethodChannel get methodChannel => _methods;
   @override
@@ -52,6 +56,17 @@ class PlayerTizen extends PlayerBase with VideoRectSupport {
   void handlePlayerEvent(String name, Map? data) {
     if (disposed || name != 'tizen' || data?['instanceId'] != nativeInstanceId || data?['session'] != _session) return;
     switch (data?['event']) {
+      case 'shown':
+        // The host mapped its video window, which stacks above Flutter's and hides the
+        // controls: raise Flutter's back over it. Never from the background, where it
+        // would cover the TV launcher and Home would show nothing.
+        final lifecycle = SchedulerBinding.instance.lifecycleState;
+        if (lifecycle == AppLifecycleState.hidden || lifecycle == AppLifecycleState.paused) return;
+        unawaited(
+          _window
+              .invokeMethod<void>('raiseWindow')
+              .catchError((Object e) => appLogger.w('Tizen: could not raise the controls over the video', error: e)),
+        );
       case 'ready':
         _width = data?['width'] as int?;
         _height = data?['height'] as int?;

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:plezy/mpv/models.dart';
@@ -84,5 +85,36 @@ void main() {
       Media('https://example.test/jellyfin/video?api_key=fixture', headers: {'X-Emby-Token': 'fixture'}),
     );
     expect(calls.where((c) => c.method == 'open').length, 1);
+  });
+
+  test('a mapped video window raises the controls over it, never from the background', () async {
+    final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    // As the embedder reports it, on the platform channel.
+    Future<void> lifecycle(AppLifecycleState state) => messenger.handlePlatformMessage(
+      SystemChannels.lifecycle.name,
+      SystemChannels.lifecycle.codec.encodeMessage(state.toString()),
+      (_) {},
+    );
+    const window = MethodChannel('tizen/internal/window');
+    final raised = <String>[];
+    messenger.setMockMethodCallHandler(window, (call) async {
+      raised.add(call.method);
+      return null;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(window, null));
+    addTearDown(() => lifecycle(AppLifecycleState.resumed));
+    final player = PlayerTizen();
+    addTearDown(player.dispose);
+    await player.open(Media('https://example.test/video.mp4'), play: false);
+    final args = Map.of(calls.last.arguments as Map);
+    await lifecycle(AppLifecycleState.resumed);
+    event(player, args, 'shown');
+    await Future<void>.delayed(Duration.zero);
+    expect(raised, ['raiseWindow']);
+    // Home: the launcher is now on top, and raising would cover it again.
+    await lifecycle(AppLifecycleState.paused);
+    event(player, args, 'shown');
+    await Future<void>.delayed(Duration.zero);
+    expect(raised, ['raiseWindow']);
   });
 }

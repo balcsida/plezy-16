@@ -75,6 +75,20 @@ class Program
         Check(native.PreparationCancelled == !nativeAlreadyReady, "Cancel only while native state is Preparing");
         Check(sink.Events.All(item => (string)item["event"] != "ready"), "A stopped open must not emit ready");
     }
+    static async Task MappingRaisesControls()
+    {
+        Player.SubtitleFailure = null;
+        Player.HoldPreparation = false;
+        using var host = new TizenMediaPlayer();
+        var sink = new Sink();
+        host.OnListen(null, sink);
+        int Shown() => sink.Events.Count(item => (string)item["event"] == "shown");
+        await Call("open");
+        Check(Shown() == 1, "Mapping the video window must ask Dart to raise the controls, once per map");
+        host.Suspend();
+        host.Resume();
+        Check(Shown() == 2, "The resume re-map stacks the video window on top again");
+    }
     static async Task<int> Main()
     {
         SynchronizationContext.SetSynchronizationContext(new Context());
@@ -85,6 +99,7 @@ class Program
             ("unavailable subtitle language", () => MainTest("language")),
             ("cancel pending preparation", () => StopPending(false)),
             ("stop after native completion before continuation", () => StopPending(true)),
+            ("mapping the video window raises the controls", MappingRaisesControls),
         };
         var failed = 0;
         foreach (var test in tests)

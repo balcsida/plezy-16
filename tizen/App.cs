@@ -10,11 +10,9 @@ namespace Runner
         public App()
         {
             IsWindowTransparent = true;
-            // The video plane lives in a second, normally-stacked window. Lowering that
-            // window put it below the TV launcher, so the transparent UI showed the TV
-            // instead of the picture. Raise Flutter's window above it instead; the video
-            // window then sits between the launcher and the controls.
-            IsTopLevel = true;
+            // Not IsTopLevel: a notification-level window also stays above the TV launcher,
+            // so Home played its sound but showed nothing. The player raises this window
+            // over its separate video window instead, in the normal stack.
             // Flutter owns the only remote-input path; no native key grabs.
             IsPointingDeviceSupport = false;
             IsFloatingMenuSupport = false;

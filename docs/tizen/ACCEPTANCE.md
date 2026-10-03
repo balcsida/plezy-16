@@ -162,6 +162,16 @@ channels for device evidence.
   benchmark, and it does not close the device-matrix rows.
 - `inspection.json` remains the build-time report; its installation flag is
   not retroactively changed. Independent cryptographic verification is pending.
+- The operator then reported that Home played the launcher's sound but showed
+  nothing while Plezy was open; leaving required pressing Back twice. `IsTopLevel`
+  makes Flutter's window a notification window at `TIZEN_POLICY_LEVEL_TOP`, above
+  every normal window including the launcher, so it is removed together with its
+  `window.priority.set` privilege. Mapping the video window now emits `shown`, and
+  Dart raises Flutter's window back over it through the embedder's
+  `tizen/internal/window` `raiseWindow` (the channel flutter-tizen's
+  `tizen_window_manager` wraps), except while the app is hidden or paused. Both
+  windows stay in the normal stack, so the launcher opens above them. Host checks
+  cover the event and the background guard; device confirmation is pending.
 
 ## Current host regression evidence
 

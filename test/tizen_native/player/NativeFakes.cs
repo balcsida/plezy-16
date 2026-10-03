@@ -14,8 +14,9 @@ namespace ElmSharp
         public (int Width, int Height) ScreenSize => (1920, 1080);
         public void Resize(int width, int height) { }
         public void FocusSkip(bool value) { }
-        public void Show() { }
-        public void Hide() { }
+        public bool IsVisible { get; private set; }
+        public void Show() => IsVisible = true;
+        public void Hide() => IsVisible = false;
         public void Lower() { }
         public void Unrealize() { }
     }

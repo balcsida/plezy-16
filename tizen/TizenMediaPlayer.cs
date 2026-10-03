@@ -104,7 +104,7 @@ namespace Runner
                     break;
                 case "setVideoRect": SetRect(args); ApplyRect(); break;
                 case "setVisible":
-                    if (Convert.ToBoolean(args["visible"])) { window.Show(); }
+                    if (Convert.ToBoolean(args["visible"])) ShowWindow();
                     else window.Hide();
                     break;
                 case "setDisplayMode":
@@ -143,7 +143,7 @@ namespace Runner
                     // without it the overlay plane stays hidden and only audio reaches the TV.
                     opened.DisplaySettings.IsVisible = true;
                     ApplyRect();
-                    if (!suspended) window.Show();
+                    if (!suspended) ShowWindow();
                 }
                 opened.PlaybackCompleted += (s, e) => Post(gen, opened, () =>
                 {
@@ -227,7 +227,7 @@ namespace Runner
         private void Play()
         {
             if (suspended) throw new InvalidOperationException("Application suspended");
-            if (player.Display != null) { window.Show(); }
+            if (player.Display != null) ShowWindow();
             if (player.State != PlayerState.Playing) player.Start();
             if (rate != 1) player.SetPlaybackRate(rate);
             Emit("playing", new Dictionary<string, object> { ["value"] = true });
@@ -258,7 +258,16 @@ namespace Runner
         public void Resume()
         {
             suspended = false; // Restore the paused picture, never autoplay.
-            if (player?.Display != null) { window.Show(); }
+            if (player?.Display != null) ShowWindow();
+        }
+        // Mapping stacks the video window above Flutter's and hides the controls. Dart raises
+        // Flutter's window back over it: only the embedder's window channel can, and it answers
+        // Dart, not C#. Window.Lower() is no substitute; it also sinks below the TV launcher.
+        private void ShowWindow()
+        {
+            if (window.IsVisible) return;
+            window.Show();
+            Emit("shown");
         }
         private void SetRect(IDictionary args)
         {
