@@ -171,7 +171,17 @@ channels for device evidence.
   `tizen/internal/window` `raiseWindow` (the channel flutter-tizen's
   `tizen_window_manager` wraps), except while the app is hidden or paused. Both
   windows stay in the normal stack, so the launcher opens above them. Host checks
-  cover the event and the background guard; device confirmation is pending.
+  cover the event and the background guard.
+- The signed artifact of `workflow_dispatch` run 37152856101 (source revision
+  `ac7c2022`, clean tree, TPK SHA-256
+  `5cee44d0336e1a9f8d3169f35473f8a157b46a6ca5afc5870c065c3518419a10`) matched
+  `SHA256SUMS` locally and again inside the deploy container. SDK SDB 4.2.36
+  reported `install completed` as an in-place signed upgrade: no uninstall, no
+  app data cleared, and the installed `author-signature.xml` matches the package
+  byte-for-byte. The operator launched it and reported that it "works perfect"
+  against the requested checks: Home opens the launcher while browsing and during
+  playback, and the controls stay visible over video after playback starts and
+  after returning from Home. This is functional confirmation by observation.
 
 ## Current host regression evidence
 
