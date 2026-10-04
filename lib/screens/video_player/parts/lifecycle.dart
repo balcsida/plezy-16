@@ -430,13 +430,17 @@ extension _VideoPlayerLifecycleMethods on VideoPlayerScreenState {
   /// never enter this flow because their tuned session and capture-buffer
   /// position must remain intact across backgrounding.
   Future<void> _restorePlayerAfterTvBackgroundSuspend({bool startPaused = true}) async {
+    // A Tizen rebuild can run with no suspend behind it: standby froze the
+    // process before its grace ran, or the TV slept without telling the app.
+    // That player was never released, so it still holds the current item.
+    final released = _tvSuspend.suspended;
     final restore = _tvSuspend.consumeForRestore();
     final suspendedMetadata = _tvSuspendedMetadata;
     _tvSuspendedMetadata = null;
 
     final currentPlayer = player;
     if (!mounted || _shuttingDown || currentPlayer == null || !_isPlayerInitialized) return;
-    if (suspendedMetadata == null || suspendedMetadata.globalKey != _currentMetadata.globalKey) {
+    if (released && (suspendedMetadata == null || suspendedMetadata.globalKey != _currentMetadata.globalKey)) {
       // The viewer moved to another item while the suspend was settling; that
       // item's own open already replaced the released stream.
       _recordLifecycleState('resumed', action: 'tv_background_suspend_restore_skipped_item_changed');
