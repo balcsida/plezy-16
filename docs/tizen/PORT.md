@@ -1,4 +1,4 @@
-# Plezy 2.20.0 → Tizen 6.0 TV
+# Plezy 2.22.0 → Tizen 6.0 TV
 
 ## Status (execution ledger, not a hardware certification)
 
@@ -16,10 +16,10 @@ pins, including the host-test SDK compatibility patch, are `tizen/toolchain.json
 
 ## Baseline / prior art
 
-- Verified GitHub `/repos/edde746/plezy/releases/latest`: stable 2.20.0,
-  published 2026-09-15, neither draft nor prerelease. 2.19.1 is superseded.
+- Verified GitHub `/repos/edde746/plezy/releases/latest`: stable 2.22.0,
+  published 2026-09-29, neither draft nor prerelease. 2.21.0 is superseded.
 - Workspace origin is balcsida/plezy, upstream is edde746/plezy. Clean before
-  `gh tidy`; integration branch `feat/tizen-6-tv` starts at the 2.20.0 tag.
+  `gh tidy`; integration branch `feat/tizen-6-tv` is rebased onto the 2.22.0 tag.
 - George-Fam/plezy-tizen's true common ancestor with the selected release is
   recorded in the lock. Its ten subsequent commits are port work plus SDK/API
   downgrades, branding and workflow changes—not newer Jellyfin functionality.

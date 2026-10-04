@@ -1,6 +1,6 @@
 # Building the Tizen 6 TV port
 
-This is a native Flutter-Tizen/C# port of Plezy **2.20.0**, not a WebView or a
+This is a native Flutter-Tizen/C# port of Plezy **2.22.0**, not a WebView or a
 Fladder UI. The target is Samsung UE55AU7022KXXH, API 6.0, TV, **ARM32**.
 See [PORT.md](PORT.md) and `tizen/toolchain.json` for provenance and exact pins.
 

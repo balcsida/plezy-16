@@ -1,6 +1,6 @@
 {
-  "upstream_release": "2.20.0",
-  "upstream_sha": "b8cff51872464f99b8734e99b2ff297d55ab9993",
+  "upstream_release": "2.22.0",
+  "upstream_sha": "1c2381f0da4a75d0e16b2dd8745551bb816de9fb",
   "plezy_reference_sha": "c43f70a22f355d030640a71a0dfdeb56e44cae7e",
   "plezy_reference_base": "7b4e3990134725c71dc0376cd485ab1368878d8a",
   "fladder_reference_sha": "8f3cb9a1e5813efc6c97a0efadfc1bf20bb3db81",

@@ -217,6 +217,23 @@ channels for device evidence.
   `tv-arm-signed-release` successfully and attached the package to a
   pre-release. For a pull-request event `tv-arm-signed-release` is skipped, as
   the fork-safety guard intends.
+- The port was rebased from upstream `fb763148` (between 2.20.0 and 2.21.0)
+  onto the 2.22.0 tag (`1c2381f0`), 217 upstream commits. Upstream 2.22.0 still
+  builds with Flutter 3.47.1 and adds no plugins, so the toolchain pins are
+  unchanged; the manifest version is now 2.22.0. Eight of the 58 port commits
+  conflicted. Upstream's new behaviour is kept with the Tizen gating
+  re-applied: external players (now offered on tvOS, still not on Tizen),
+  codec acceptance (`accepts()` refuses HEVC and AV1 on Tizen), the audio
+  channel limit that replaced downmix (hidden on Tizen with the other mpv-only
+  controls), HTTP 403 handling (outranks a reconnect) and the failure view for
+  a failed TV-suspend restore (Tizen retries first).
+- Upstream's check that skips a restore whose released item changed also
+  skipped every Tizen rebuild that no suspend preceded, which records no item.
+  `player_resume_screen_test` and `player_wake_screen_test` failed on it; the
+  check now applies only to a released player. `check.sh` passes, the full
+  suite passes 7,802 tests (9 skipped) with no failures, and the native host
+  checks pass 6/6 and 11/11. Device confirmation of the 2.22.0 build is
+  pending.
 
 ## Verification tiers
 
