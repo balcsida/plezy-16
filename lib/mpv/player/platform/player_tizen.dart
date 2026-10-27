@@ -19,6 +19,42 @@ class PlayerTizen extends PlayerBase with VideoRectSupport {
   static const _events = EventChannel('com.plezy/tizen_player/events');
   // The embedder's own channel, the one flutter-tizen's tizen_window_manager wraps.
   static const _window = MethodChannel('tizen/internal/window');
+
+  // After a standby the platform never reported, the lifecycle still says resumed
+  // while the TV may have woken behind its own launcher. A remote key reaching
+  // Flutter needs this window to hold focus, so it is the proof the app is in front.
+  static bool _raiseHeld = false;
+  static bool _raiseOwed = false;
+
+  /// Defer raising the controls over the video until a key or a resume shows
+  /// the app is in front again.
+  static void holdRaiseUntilInput() {
+    if (_raiseHeld) return;
+    _raiseHeld = true;
+    HardwareKeyboard.instance.addHandler(_releaseRaiseOnKey);
+  }
+
+  static bool _releaseRaiseOnKey(KeyEvent event) {
+    releaseRaiseHold();
+    return false;
+  }
+
+  /// The app is known to be in front: raise now if a mapped video window is owed one.
+  static void releaseRaiseHold() {
+    if (!_raiseHeld) return;
+    _raiseHeld = false;
+    HardwareKeyboard.instance.removeHandler(_releaseRaiseOnKey);
+    if (_raiseOwed) {
+      _raiseOwed = false;
+      _raiseControls();
+    }
+  }
+
+  static void _raiseControls() => unawaited(
+    _window
+        .invokeMethod<void>('raiseWindow')
+        .catchError((Object e) => appLogger.w('Tizen: could not raise the controls over the video', error: e)),
+  );
   @override
   MethodChannel get methodChannel => _methods;
   @override
@@ -62,11 +98,11 @@ class PlayerTizen extends PlayerBase with VideoRectSupport {
         // would cover the TV launcher and Home would show nothing.
         final lifecycle = SchedulerBinding.instance.lifecycleState;
         if (lifecycle == AppLifecycleState.hidden || lifecycle == AppLifecycleState.paused) return;
-        unawaited(
-          _window
-              .invokeMethod<void>('raiseWindow')
-              .catchError((Object e) => appLogger.w('Tizen: could not raise the controls over the video', error: e)),
-        );
+        if (_raiseHeld) {
+          _raiseOwed = true;
+          return;
+        }
+        _raiseControls();
       case 'ready':
         _width = data?['width'] as int?;
         _height = data?['height'] as int?;

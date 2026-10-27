@@ -92,6 +92,24 @@ void main() {
     });
   });
 
+  test('a gap is reported as soon as it is seen, before it settles into a wake', () {
+    fakeAsync((async) {
+      var sleeps = 0;
+      detector = WakeDetector(onWake: wakes.add, onSleep: () => sleeps++, wallClock: () => wall, monotonic: () => mono);
+      detector.start();
+      run(async, const Duration(minutes: 1));
+      expect(sleeps, 0);
+      wall = wall.add(const Duration(seconds: 308));
+      run(async, wakeCheckPeriod);
+      expect(sleeps, 1);
+      expect(wakes, isEmpty, reason: 'the panel may still be dark');
+      run(async, wakeSettle);
+      expect(wakes, [const Duration(seconds: 308)]);
+      expect(sleeps, 1, reason: 'running time is not another gap');
+      detector.stop();
+    });
+  });
+
   test('a check that runs a little late is not a wake', () {
     fakeAsync((async) {
       detector.start();

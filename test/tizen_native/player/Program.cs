@@ -89,6 +89,21 @@ class Program
         host.Resume();
         Check(Shown() == 2, "The resume re-map stacks the video window on top again");
     }
+    static async Task ReopenKeepsWindowMapped()
+    {
+        Player.SubtitleFailure = null;
+        Player.HoldPreparation = false;
+        using var host = new TizenMediaPlayer();
+        var sink = new Sink();
+        host.OnListen(null, sink);
+        int Shown() => sink.Events.Count(item => (string)item["event"] == "shown");
+        await Call("open");
+        await Call("open", 2);
+        Check(Shown() == 1, "A reopen must not re-map the video window: the raise after a map can cover the TV launcher");
+        await Call("stop", 2);
+        await Call("open", 3);
+        Check(Shown() == 2, "An open after a stop hid the window maps it again");
+    }
     static async Task<int> Main()
     {
         SynchronizationContext.SetSynchronizationContext(new Context());
@@ -100,6 +115,7 @@ class Program
             ("cancel pending preparation", () => StopPending(false)),
             ("stop after native completion before continuation", () => StopPending(true)),
             ("mapping the video window raises the controls", MappingRaisesControls),
+            ("a reopen keeps the video window mapped", ReopenKeepsWindowMapped),
         };
         var failed = 0;
         foreach (var test in tests)

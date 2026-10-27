@@ -29,7 +29,7 @@ const Duration wakeSettle = Duration(seconds: 12);
 // wake and costs one needless rebuild; compare against a boot-time clock from
 // the host if a trace ever shows it.
 class WakeDetector {
-  WakeDetector({required this.onWake, DateTime Function()? wallClock, Duration Function()? monotonic})
+  WakeDetector({required this.onWake, this.onSleep, DateTime Function()? wallClock, Duration Function()? monotonic})
     : _wallClock = wallClock ?? _systemClock,
       _monotonic = monotonic ?? _processClock;
 
@@ -43,6 +43,10 @@ class WakeDetector {
 
   /// Called with the time the process did not see.
   final void Function(Duration gap) onWake;
+
+  /// Called as soon as a gap is seen, before it settles into a wake: the
+  /// panel may still be dark, or the TV may have woken behind its launcher.
+  final void Function()? onSleep;
   final DateTime Function() _wallClock;
   final Duration Function() _monotonic;
 
@@ -88,6 +92,7 @@ class WakeDetector {
       // Stopped again before it settled: the wait starts over.
       _missed = missed;
       _checksSinceWake = 0;
+      onSleep?.call();
       return;
     }
     final waited = _missed;

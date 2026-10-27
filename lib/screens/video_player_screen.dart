@@ -14,6 +14,7 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../mpv/mpv.dart';
 import '../mpv/player/platform/player_android.dart';
+import '../mpv/player/platform/player_tizen.dart';
 import '../mpv/player/player_native.dart';
 
 import '../services/scrub_preview_source.dart';
@@ -1661,7 +1662,10 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen>
         _cancelTvBackgroundPlayerSuspendTimer();
         // This resume owns the wake: the clock gap behind it is not news.
         _resumes++;
-        if (PlatformDetector.isTizen()) _wakeDetector.start();
+        if (PlatformDetector.isTizen()) {
+          _wakeDetector.start();
+          PlayerTizen.releaseRaiseHold();
+        }
         _recordLifecycleState('resumed');
         _enqueueLifecycleTransition('resumed', _handleAppResumed);
         break;
@@ -2819,7 +2823,10 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen>
   bool _sourceSwitchInFlight = false;
 
   /// Tizen only: the TV can sleep under the app without a lifecycle event.
-  late final WakeDetector _wakeDetector = WakeDetector(onWake: (_) => _onWakeWithoutLifecycle());
+  late final WakeDetector _wakeDetector = WakeDetector(
+    onWake: (_) => _onWakeWithoutLifecycle(),
+    onSleep: PlayerTizen.holdRaiseUntilInput,
+  );
 
   /// Resume events seen, so a wake can tell whether one came with it.
   int _resumes = 0;

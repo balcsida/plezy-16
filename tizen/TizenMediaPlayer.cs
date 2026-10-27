@@ -120,7 +120,9 @@ namespace Runner
 
         private async Task Open(IDictionary args)
         {
-            Release();
+            // Keep the window mapped across a reopen: mapping restacks it, and the raise that
+            // follows can land over the TV launcher when a standby went unreported.
+            Release(hideWindow: false);
             owner = Convert.ToInt32(args["instanceId"]);
             session = Convert.ToInt32(args["session"]);
             var gen = generation;
@@ -145,6 +147,7 @@ namespace Runner
                     ApplyRect();
                     if (!suspended) ShowWindow();
                 }
+                else window.Hide();
                 opened.PlaybackCompleted += (s, e) => Post(gen, opened, () =>
                 {
                     StopTimer();
@@ -293,7 +296,7 @@ namespace Runner
             player.DisplaySettings.Mode = PlayerDisplayMode.Roi;
         }
         private void StopTimer() { if (timer != IntPtr.Zero) EcoreMainloop.RemoveTimer(timer); timer = IntPtr.Zero; }
-        private void Release()
+        private void Release(bool hideWindow = true)
         {
             generation++;
             StopTimer();
@@ -313,7 +316,7 @@ namespace Runner
                 {
                     subtitles = false; cropped = false;
                     videoWidth = 0; videoHeight = 0;
-                    window.Hide();
+                    if (hideWindow) window.Hide();
                 }
             }
         }

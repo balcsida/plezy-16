@@ -141,4 +141,57 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(raised, ['raiseWindow']);
   });
+
+  test('after a standby nobody reported, the controls wait for a key before rising', () async {
+    final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    const window = MethodChannel('tizen/internal/window');
+    final raised = <String>[];
+    messenger.setMockMethodCallHandler(window, (call) async {
+      raised.add(call.method);
+      return null;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(window, null));
+    addTearDown(PlayerTizen.releaseRaiseHold);
+    await messenger.handlePlatformMessage(
+      SystemChannels.lifecycle.name,
+      SystemChannels.lifecycle.codec.encodeMessage(AppLifecycleState.resumed.toString()),
+      (_) {},
+    );
+    final player = PlayerTizen();
+    addTearDown(player.dispose);
+    await player.open(Media('https://example.test/video.mp4'), play: false);
+    final args = Map.of(calls.last.arguments as Map);
+
+    // The lifecycle still says resumed, but the TV may have woken behind its launcher.
+    PlayerTizen.holdRaiseUntilInput();
+    event(player, args, 'shown');
+    await Future<void>.delayed(Duration.zero);
+    expect(raised, isEmpty, reason: 'raising now would cover the launcher');
+
+    // Only a focused window gets the remote's keys.
+    const key = KeyDownEvent(
+      physicalKey: PhysicalKeyboardKey.arrowDown,
+      logicalKey: LogicalKeyboardKey.arrowDown,
+      timeStamp: Duration.zero,
+    );
+    expect(HardwareKeyboard.instance.handleKeyEvent(key), isFalse, reason: 'the key still reaches the app');
+    await Future<void>.delayed(Duration.zero);
+    expect(raised, ['raiseWindow']);
+    HardwareKeyboard.instance.handleKeyEvent(
+      const KeyUpEvent(
+        physicalKey: PhysicalKeyboardKey.arrowDown,
+        logicalKey: LogicalKeyboardKey.arrowDown,
+        timeStamp: Duration.zero,
+      ),
+    );
+
+    // Nothing owed: a later hold released by a resume raises nothing.
+    PlayerTizen.holdRaiseUntilInput();
+    PlayerTizen.releaseRaiseHold();
+    await Future<void>.delayed(Duration.zero);
+    expect(raised, ['raiseWindow']);
+    event(player, args, 'shown');
+    await Future<void>.delayed(Duration.zero);
+    expect(raised, ['raiseWindow', 'raiseWindow'], reason: 'released, a map raises at once again');
+  });
 }
