@@ -6,6 +6,8 @@ namespace Runner
     public class App : FlutterApplication
     {
         private TizenMediaPlayer player;
+        // The channel the embedder's own lifecycle messages travel on.
+        private BasicMessageChannel<string> lifecycle;
 
         public App()
         {
@@ -23,12 +25,16 @@ namespace Runner
             base.OnCreate();
             GeneratedPluginRegistrant.RegisterPlugins(this);
             player = new TizenMediaPlayer();
+            lifecycle = new BasicMessageChannel<string>("flutter/lifecycle", new StringCodec());
         }
 
         protected override void OnPause()
         {
             player?.Suspend();
-            base.OnPause();
+            // Not base.OnPause(): the embedder would also mark the view unfocused, and the next
+            // focus change in Plezy, such as a refresh landing, would then have the embedder
+            // activate this window over the TV launcher. Dart still sees the same pause.
+            lifecycle.Send("AppLifecycleState.paused");
         }
 
         protected override void OnResume()
