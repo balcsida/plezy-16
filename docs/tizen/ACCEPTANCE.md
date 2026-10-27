@@ -234,6 +234,23 @@ channels for device evidence.
   suite passes 7,802 tests (9 skipped) with no failures, and the native host
   checks pass 6/6 and 11/11. Device confirmation of the 2.22.0 build is
   pending.
+- The operator then reported two faults after powering the TV off and on.
+  Plezy covered the TV launcher, which kept the remote, so selecting a video
+  opened a launcher tile instead. Home progress also stayed stale through
+  refreshes until Plezy was restarted. Two paths raise Plezy's window from the
+  background. The standby rebuild re-mapped the video window and Dart raised
+  the controls over it, because the lifecycle still read resumed. And after a
+  pause, the embedder had marked the view unfocused, so the next focus change
+  in Plezy made it activate the window. The host now keeps the video window
+  mapped across a reopen. A gap the wake watch sees holds that raise until a
+  remote key or a resume shows Plezy is in front. The host's pause sends the
+  lifecycle message without unfocusing the view. The stale progress was not
+  reproduced on the host; the reporting path is correct there. The likely
+  cause is that no resume follows a standby on this TV. A report that fails
+  with Wi-Fi down during a brief wake then marks the server offline, and only
+  a resume re-probes it. The app now treats an unreported wake as that resume.
+  `check.sh` passes (302 tests, 3 skipped; 19 Tizen-defined) and the native
+  host checks pass 7/7 and 11/11. Device confirmation is pending.
 
 ## Verification tiers
 
