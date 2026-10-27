@@ -84,6 +84,7 @@ import 'services/plex_api_cache.dart';
 import 'database/app_database.dart';
 import 'database/download_operations.dart';
 import 'database/tvos_database_recovery_store.dart';
+import 'screens/video_player/wake_detector.dart';
 import 'screens/video_player_screen.dart';
 import 'utils/app_logger.dart';
 import 'utils/certificate_trust.dart';
@@ -1392,6 +1393,7 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    if (PlatformDetector.isTizen()) _wakeDetector.start();
 
     // The watchdog's first useful sample is at least 15 seconds away; install
     // its timer only after the first app frame has completed.
@@ -1514,6 +1516,7 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
     _watchStateSubscription?.cancel();
     _removeConnectivitySyncListener();
     _memoryCheckTimer?.cancel();
+    _wakeDetector.stop();
     _appLifecycleListener.dispose();
     if (_shutdownFuture == null) {
       _libraryEventService.dispose();
@@ -1681,10 +1684,24 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
     }
   }
 
+  /// Tizen only: a Samsung TV sleeps under the app without pausing or resuming
+  /// it, so without this a server a standby left offline stays offline, and
+  /// Home with it, until a restart.
+  late final WakeDetector _wakeDetector = WakeDetector(
+    onWake: (_) {
+      // Woken in the background, the resume still to come does this.
+      if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+        didChangeAppLifecycleState(AppLifecycleState.resumed);
+      }
+    },
+  );
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.resumed:
+        // This resume answers the clock gap behind it.
+        if (PlatformDetector.isTizen()) _wakeDetector.start();
         // App came back to foreground - trigger sync check
         _offlineWatchSyncService.onAppResumed();
         unawaited(TrackerCoordinator.instance.flushWriteQueue());
