@@ -53,11 +53,11 @@ def inspect(package):
         ns = {'t': 'http://tizen.org/ns/packages'}
         app = root.find('t:ui-application', ns)
         profile = root.find('t:profile', ns)
-        if root.get('package') != 'com.edde746.plezy' or root.get('api-version') != '6.0':
+        if root.get('package') != 'com.balcsida.plezy16' or root.get('api-version') != '6.0':
             raise ValueError('Incorrect package identity or API')
         if profile is None or profile.get('name') != 'tv':
             raise ValueError('Package is not TV profile')
-        if app is None or app.get('appid') != 'com.edde746.plezy' or app.get('type') != 'dotnet' or app.get('exec') != 'Runner.dll':
+        if app is None or app.get('appid') != 'com.balcsida.plezy16' or app.get('type') != 'dotnet' or app.get('exec') != 'Runner.dll':
             raise ValueError('Not the supported C# application host')
         basenames = {PurePosixPath(name).name for name in names}
         if not {'Runner.dll', 'libapp.so', 'libflutter_engine.so', 'libflutter_tizen.so'}.issubset(basenames):

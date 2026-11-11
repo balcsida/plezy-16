@@ -6,6 +6,7 @@ import '../../widgets/focused_scroll_scaffold.dart';
 import '../../widgets/focusable_list_tile.dart';
 import '../../widgets/settings_section.dart';
 import '../../i18n/strings.g.dart';
+import '../../utils/platform_detector.dart';
 import '../../theme/mono_tokens.dart';
 import 'licenses_screen.dart';
 
@@ -16,7 +17,7 @@ class AboutScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final appName = t.app.title;
+    final appName = PlatformDetector.appTitle(t.app.title);
 
     return FutureBuilder<PackageInfo>(
       future: _packageInfoFuture,

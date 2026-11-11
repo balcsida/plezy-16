@@ -1992,7 +1992,7 @@ class _AppShell extends StatelessWidget {
                 behavior: HitTestBehavior.translucent,
                 child: InputModeTracker(
                   child: MaterialApp(
-                    title: t.app.title,
+                    title: PlatformDetector.appTitle(t.app.title),
                     debugShowCheckedModeBanner: false,
                     // The app language, not Flutter's en-US default: every
                     // Text inherits it as the locale that selects CJK glyph

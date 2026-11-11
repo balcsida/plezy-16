@@ -220,6 +220,9 @@ class PlatformDetector {
   static const bool _tizen = bool.fromEnvironment('TIZEN_BUILD');
   static bool isTizen() => _tizen;
 
+  // The Tizen fork is unofficial and ships under its own name.
+  static String appTitle(String upstream) => _tizen ? 'Plezy 16' : upstream;
+
   static bool isTV() {
     return _tizen || TvDetectionService.isTVSync();
   }

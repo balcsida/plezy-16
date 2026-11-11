@@ -284,7 +284,7 @@ class _AuthScreenState extends State<AuthScreen> {
                             Image.asset('assets/plezy.png', width: 120, height: 120),
                             const SizedBox(height: 24),
                             Text(
-                              t.app.title,
+                              PlatformDetector.appTitle(t.app.title),
                               style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: .bold),
                               textAlign: TextAlign.center,
                             ),
@@ -313,7 +313,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         Image.asset('assets/plezy.png', width: 120, height: 120),
                         const SizedBox(height: 24),
                         Text(
-                          t.app.title,
+                          PlatformDetector.appTitle(t.app.title),
                           style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: .bold),
                           textAlign: TextAlign.center,
                         ),

@@ -34,9 +34,13 @@ pins, including the host-test SDK compatibility patch, are `tizen/toolchain.json
 
 ## Adopted / rejected
 
-Adopt the Plezy port's C# FlutterApplication host, package identity
-`com.edde746.plezy`, native player channels, transparent video-plane integration,
-and Drift-over-sqflite strategy. Adapt these to the **current** contracts.
+Adopt the Plezy port's C# FlutterApplication host, native player channels,
+transparent video-plane integration, and Drift-over-sqflite strategy. Adapt these to the **current** contracts.
+
+The fork ships as **Plezy 16** under its own identity `com.balcsida.plezy16`
+(upstream asked for both in edde746/plezy#1164): it is an unofficial fork, not
+maintained or supported by upstream, and must not look like an official build.
+
 Preserve the fork's GPL attribution and upstream's license; no Fladder branding
 or business logic is transplanted. Preserve Plezy's existing Jellyfin/Plex/Emby UI.
 

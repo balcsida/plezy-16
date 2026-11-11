@@ -14,8 +14,8 @@ class PackageInspectionTest(unittest.TestCase):
         struct.pack_into('<H', header, 18, machine)
         entries = {
             'tizen-manifest.xml': manifest or '''<manifest xmlns="http://tizen.org/ns/packages"
-                package="com.edde746.plezy" api-version="6.0" version="2.20.0">
-                <profile name="tv"/><ui-application appid="com.edde746.plezy" type="dotnet" exec="Runner.dll"/>
+                package="com.balcsida.plezy16" api-version="6.0" version="2.20.0">
+                <profile name="tv"/><ui-application appid="com.balcsida.plezy16" type="dotnet" exec="Runner.dll"/>
                 </manifest>''',
             'author-signature.xml': '<Signature/>', 'signature1.xml': '<Signature/>',
             'bin/Runner.dll': b'MZ',
