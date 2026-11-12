@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:plezy/mpv/models.dart';
 import 'package:plezy/mpv/player/platform/player_tizen.dart';
+import 'package:plezy/services/settings_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -141,6 +142,22 @@ void main() {
     args = await open(isLive: true);
     stand(args, 12);
     expect(player.state.buffering, isFalse);
+  });
+
+  test('the Playback Buffer tier goes to the host with every open, except a live one', () async {
+    final player = PlayerTizen();
+    addTearDown(player.dispose);
+    Object? tier() => (calls.lastWhere((c) => c.method == 'open').arguments as Map)['bufferTier'];
+    await player.open(Media('https://example.test/video.mp4'), play: false);
+    expect(tier(), 'auto');
+    await player.setProperty('exo-buffer-tier', PlaybackBufferTier.extraLarge.nativeValue);
+    await player.open(Media('https://example.test/video.mp4'), play: false);
+    expect(tier(), 'extra_large');
+    await player.open(Media('https://example.test/video.mp4'), play: false);
+    expect(tier(), 'extra_large', reason: 'a reconnect reopens on the same player');
+    // A channel has no media ahead to wait for.
+    await player.open(Media('https://example.test/live.m3u8'), play: false, isLive: true);
+    expect(tier(), 'auto');
   });
 
   test('only a connection failure is tagged as one', () async {

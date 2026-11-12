@@ -77,6 +77,12 @@ namespace Tizen.Multimedia
         public void SetRoi(Rectangle rectangle) { }
     }
     public class MediaUriSource { public MediaUriSource(string uri) { } }
+    public struct PlayerBufferingTime
+    {
+        public int PreBufferMillisecond, ReBufferMillisecond;
+        public PlayerBufferingTime(int preBufferMillisecond = -1, int reBufferMillisecond = -1)
+            { PreBufferMillisecond = preBufferMillisecond; ReBufferMillisecond = reBufferMillisecond; }
+    }
     public class VideoProperties { public (int Width, int Height) Size => (1920, 1080); }
     public class StreamInfo
     {
@@ -120,6 +126,21 @@ namespace Tizen.Multimedia
         public static Player Last;
         public static string SubtitleFailure;
         public static bool HoldPreparation;
+        public static bool RefuseBufferingTime;
+        // What the bridge set; null while the TV's own was left alone.
+        public PlayerBufferingTime? BufferingSet;
+        public PlayerBufferingTime BufferingTime
+        {
+            // On a file a read alone stood another app's TV player still: the bridge has no use for one.
+            get => throw new InvalidOperationException("The bridge must not read the buffering time");
+            // API 6 takes it in Idle only.
+            set
+            {
+                Require(PlayerState.Idle);
+                if (RefuseBufferingTime) throw new NotSupportedException();
+                BufferingSet = value;
+            }
+        }
         public PlayerState State { get; set; } = PlayerState.Idle;
         public bool Disposed, PreparationCancelled;
         public string UserAgent { get; set; }

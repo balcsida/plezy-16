@@ -1902,7 +1902,10 @@ class VideoPlayerScreenState extends State<VideoPlayerScreen>
 
       if (!_isPlayerInitializationCurrent(generation)) return;
       initPhase = 'configuring player';
-      if (!PlatformDetector.isTizen()) {
+      if (PlatformDetector.isTizen()) {
+        // The TV's player takes the Playback Buffer tier too, as its wait for media.
+        await currentPlayer.setProperty('exo-buffer-tier', playbackBufferTier.nativeValue);
+      } else {
         await currentPlayer.configureSubtitleFonts();
         await currentPlayer.setProperty('sub-ass', 'yes'); // Enable libass
         if (Platform.isAndroid && useExoPlayer) {

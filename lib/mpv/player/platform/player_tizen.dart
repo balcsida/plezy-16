@@ -74,6 +74,7 @@ class PlayerTizen extends PlayerBase with VideoRectSupport {
   int _subtitleGeneration = 0;
   bool _opened = false;
   double _volume = 100, _rate = 1;
+  String _bufferTier = 'auto';
   int _displayMode = 0;
   int? _width, _height;
   Duration? _pendingSeek;
@@ -153,6 +154,8 @@ class PlayerTizen extends PlayerBase with VideoRectSupport {
         if (!playing && state.buffering) handlePropertyChange('paused-for-cache', false);
         handlePropertyChange('pause', !playing);
         if (playing) super.handlePlayerEvent('playback-restart', null);
+      case 'bufferingRefused':
+        appLogger.w('Tizen: the TV refused the Playback Buffer tier and keeps its own buffering');
       case 'audio':
         updateSelectedAudioTrack(data?['id']);
       case 'subtitle':
@@ -262,6 +265,8 @@ class PlayerTizen extends PlayerBase with VideoRectSupport {
         'volume': _volume,
         'rate': _rate,
         'displayMode': _displayMode,
+        // A channel has no media ahead to wait for.
+        'bufferTier': isLive ? 'auto' : _bufferTier,
       }, session).timeout(const Duration(seconds: 45));
     } catch (_) {
       if (!disposed && session == _session) {
@@ -418,6 +423,10 @@ class PlayerTizen extends PlayerBase with VideoRectSupport {
         await (value == 'yes' ? pause() : play());
       case 'sub-visibility':
         if (value == 'no') await selectSubtitleTrack(SubtitleTrack.off);
+      // The Playback Buffer setting's tier, by the name PlayerAndroid takes it.
+      // The host turns it into the TV's wait for media, with every open.
+      case 'exo-buffer-tier':
+        _bufferTier = value;
       default:
         throw UnsupportedError('mpv option $name is unavailable on Tizen');
     }

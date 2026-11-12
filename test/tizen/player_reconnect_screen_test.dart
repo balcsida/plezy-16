@@ -165,6 +165,7 @@ void main() {
             ),
           ),
         );
+        await SettingsService.instance.write(SettingsService.playbackBufferTier, PlaybackBufferTier.large);
         unawaited(
           VideoPlayerRoute(
             builder: (_) => VideoPlayerScreen(
@@ -352,6 +353,8 @@ void main() {
         await opened(++count);
         await ready();
         expect(failureView, findsNothing);
+        // A reopen on a network that drops is the one the chosen buffer is for.
+        expect(opens.map((open) => open['bufferTier']).toSet(), {'large'});
 
         var shutdownDone = false;
         final shutdown = PlaybackCoordinator.instance.shutdownVideo().whenComplete(() => shutdownDone = true);

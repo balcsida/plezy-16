@@ -135,6 +135,18 @@ namespace Runner
             try
             {
                 if (args["userAgent"] is string agent) opened.UserAgent = agent;
+                // The Playback Buffer tiers: how much media the TV gathers before it plays on. Another
+                // Samsung TV app (pley) measured that it waits so after a stall and after every seek
+                // too, and that a file's player stood still for good once its buffering was touched.
+                // ponytail: both times guessed; resize from a device trace.
+                var tier = args["bufferTier"] as string;
+                var hold = tier == "large" ? 10000 : tier == "extra_large" ? 20000 : 0;
+                if (hold > 0 && uri.Scheme != "file")
+                {
+                    try { opened.BufferingTime = new PlayerBufferingTime(0, hold); }
+                    // Not settable on this TV: it keeps its own and plays.
+                    catch (Exception) { Emit("bufferingRefused"); }
+                }
                 opened.Volume = (float)Math.Max(0, Math.Min(1, Convert.ToDouble(args["volume"] ?? 100) / 100));
                 rate = (float)Convert.ToDouble(args["rate"] ?? 1);
                 displayMode = new[] { PlayerDisplayMode.LetterBox, PlayerDisplayMode.CroppedFull, PlayerDisplayMode.FullScreen }[Convert.ToInt32(args["displayMode"] ?? 0)];

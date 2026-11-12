@@ -77,7 +77,7 @@ class PlaybackSettingsScreen extends StatelessWidget {
                 if (PlatformDetector.supportsExternalPlayers()) _externalPlayerTile(),
                 if (!exoActive && mpvTuning) _mpvConfigTile(),
                 if (mpvTuning) _hardwareDecodingTile(),
-                if (exoActive) _playbackBufferTile(),
+                if (exoActive || PlatformDetector.isTizen()) _playbackBufferTile(),
                 if (exoActive) _tunneledPlaybackTile(),
                 if (PlatformDetector.supportsPictureInPicture()) _autoPipTile(),
               ],
@@ -667,7 +667,10 @@ class PlaybackSettingsScreen extends StatelessWidget {
     pref: SettingsService.playbackBufferTier,
     icon: Symbols.hourglass_top_rounded,
     title: t.settings.playbackBuffer,
-    subtitleBuilder: (tier) => '${_playbackBufferLabel(tier)} · ${t.settings.playbackBufferDescription}',
+    // The description speaks of the Buffer Size setting, which the TV has not.
+    subtitleBuilder: (tier) => PlatformDetector.isTizen()
+        ? _playbackBufferLabel(tier)
+        : '${_playbackBufferLabel(tier)} · ${t.settings.playbackBufferDescription}',
     options: PlaybackBufferTier.values
         .map((tier) => DialogOption(value: tier, title: _playbackBufferLabel(tier)))
         .toList(),

@@ -28,13 +28,13 @@ class Program
     {
         if (!condition) throw new Exception(message);
     }
-    static Task<object> Call(string method, int session = 1) => MethodChannel.Handler(new MethodCall
+    static Task<object> Call(string method, int session = 1, string tier = null, string url = "https://example.invalid/test.mp4") => MethodChannel.Handler(new MethodCall
     {
         Method = method,
         Arguments = new Dictionary<string, object>
         {
             ["instanceId"] = 1, ["session"] = session,
-            ["url"] = "https://example.invalid/test.mp4", ["play"] = true
+            ["url"] = url, ["play"] = true, ["bufferTier"] = tier
         }
     });
     static async Task MainTest(string subtitleFailure)
@@ -104,6 +104,38 @@ class Program
         await Call("open", 3);
         Check(Shown() == 2, "An open after a stop hid the window maps it again");
     }
+    static async Task BufferTier()
+    {
+        Player.SubtitleFailure = null;
+        Player.HoldPreparation = false;
+        using var host = new TizenMediaPlayer();
+        host.OnListen(null, new Sink());
+        await Call("open");
+        Check(Player.Last.BufferingSet == null, "Auto leaves the TV's own buffering alone");
+        await Call("open", 2, "large");
+        Check(Player.Last.BufferingSet?.ReBufferMillisecond == 10000, "Large waits for 10 s of media after a stall or a seek");
+        await Call("open", 3, "extra_large");
+        var time = Player.Last.BufferingSet;
+        Check(time?.ReBufferMillisecond == 20000 && time?.PreBufferMillisecond == 0, "Extra Large waits for 20 s, and the start stays the TV's own");
+        await Call("open", 4, "extra_large", "file:///opt/usr/media/test.mp4");
+        Check(Player.Last.BufferingSet == null, "A file is not streamed: its buffering is left alone");
+    }
+    static async Task BufferTierRefused()
+    {
+        Player.SubtitleFailure = null;
+        Player.HoldPreparation = false;
+        Player.RefuseBufferingTime = true;
+        try
+        {
+            using var host = new TizenMediaPlayer();
+            var sink = new Sink();
+            host.OnListen(null, sink);
+            await Call("open", 1, "large");
+            Check(Player.Last.State == PlayerState.Playing, "A TV that refuses the buffering time keeps its own and plays");
+            Check(sink.Events.Count(item => (string)item["event"] == "bufferingRefused") == 1, "The refusal is reported, not swallowed");
+        }
+        finally { Player.RefuseBufferingTime = false; }
+    }
     static async Task<int> Main()
     {
         SynchronizationContext.SetSynchronizationContext(new Context());
@@ -116,6 +148,8 @@ class Program
             ("stop after native completion before continuation", () => StopPending(true)),
             ("mapping the video window raises the controls", MappingRaisesControls),
             ("a reopen keeps the video window mapped", ReopenKeepsWindowMapped),
+            ("the buffer tier sets the wait after a stall or a seek", BufferTier),
+            ("a refused buffer tier still plays", BufferTierRefused),
         };
         var failed = 0;
         foreach (var test in tests)
