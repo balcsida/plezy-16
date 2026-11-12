@@ -129,7 +129,9 @@ class _LogsScreenState extends State<LogsScreen> with MountedSetStateMixin {
     final deviceInfo = widget.deviceInfoPlugin ?? DeviceInfoPlugin();
     final buffer = StringBuffer();
     final commitSuffix = gitCommit.isNotEmpty ? ' ${gitCommit.substring(0, 7)}' : '';
-    buffer.writeln('${PlatformDetector.appTitle(t.app.title)} v${packageInfo.version} (${packageInfo.buildNumber})$commitSuffix');
+    buffer.writeln(
+      '${PlatformDetector.appTitle(t.app.title)} v${packageInfo.version} (${packageInfo.buildNumber})$commitSuffix',
+    );
 
     if (Platform.isAndroid) {
       final info = await deviceInfo.androidInfo;
