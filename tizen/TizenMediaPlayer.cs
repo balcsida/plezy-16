@@ -153,8 +153,6 @@ namespace Runner
                     StopTimer();
                     Emit("completed");
                 });
-                opened.BufferingProgressChanged += (s, e) => Post(gen, opened, () =>
-                    Emit("buffering", new Dictionary<string, object> { ["value"] = e.Percent < 100 }));
                 opened.SubtitleUpdated += (s, e) => Post(gen, opened, () =>
                 {
                     if (subtitles) Emit("subtitle", new Dictionary<string, object> { ["text"] = e.Text ?? "", ["durationMs"] = (int)e.Duration });

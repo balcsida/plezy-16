@@ -27,6 +27,9 @@ class TizenStreamClient with PlaybackReportRecorder implements MediaServerClient
 
   @override
   ServerId get serverId => ServerId('srv-1');
+  // A status change has the provider probe Live TV, which asks for this first.
+  @override
+  Object get authenticationSessionId => this;
   @override
   String get serverName => 'Server';
   @override

@@ -9,6 +9,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:plezy/database/app_database.dart';
 import 'package:plezy/i18n/strings.g.dart';
+import 'package:plezy/media/ids.dart';
 import 'package:plezy/media/media_backend.dart';
 import 'package:plezy/models/transcode_quality_preset.dart';
 import 'package:plezy/mpv/player/player_base.dart';
@@ -79,7 +80,12 @@ void main() {
     final accountPreferences = AccountPreferencesController();
     // The test host is a desktop: answer the window plugins it reaches for.
     final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-    const hostChannels = [MethodChannel('window_manager'), MethodChannel('com.plezy/window_utils')];
+    const hostChannels = [
+      MethodChannel('window_manager'),
+      MethodChannel('com.plezy/window_utils'),
+      // A server back online has the manager listen for connectivity changes.
+      MethodChannel('dev.fluttercommunity.plus/connectivity_status'),
+    ];
     for (final channel in hostChannels) {
       messenger.setMockMethodCallHandler(channel, (call) async => call.method.startsWith('is') ? false : null);
     }
@@ -257,6 +263,29 @@ void main() {
         expect(unsupported, findsNothing);
         expect(failureView, findsNothing);
         emit('playing', {'value': true});
+
+        // The server drops out and returns while the picture moves: the TV's
+        // buffer bridged it, and a seek in place would only throw that away.
+        void serverReturns() {
+          multi.manager.updateServerStatus(ServerId('srv-1'), false);
+          multi.manager.updateServerStatus(ServerId('srv-1'), true);
+        }
+
+        int seeks() => calls.where((call) => call == 'seek').length;
+        await playhead(900000);
+        // What the host used to forward for a buffer under 100 %.
+        emit('buffering', {'value': true});
+        serverReturns();
+        await tester.pump();
+        await tester.pump();
+        expect(seeks(), 0);
+        // Back to a picture that stands still, it asks for the stream again.
+        for (var read = 0; read < 6; read++) {
+          emit('position', {'positionMs': 900000});
+        }
+        serverReturns();
+        await pumpUntil(tester, () => seeks() == 1, describe: () => 'seeks=${seeks()}');
+
         await playhead(1200000);
         spent = 0;
         var count = opens.length;

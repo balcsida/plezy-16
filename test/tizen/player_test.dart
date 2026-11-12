@@ -53,6 +53,96 @@ void main() {
     expect(player.state.playing, isFalse);
   });
 
+  test('a stall is a position standing still while it plays, not a buffer under 100 %', () async {
+    final player = PlayerTizen();
+    addTearDown(player.dispose);
+    await player.open(Media('https://example.test/video.mp4'));
+    final args = Map.of(calls.last.arguments as Map);
+    event(player, args, 'ready', {'durationMs': 20000, 'tracks': []});
+    event(player, args, 'playing', {'value': true});
+    // What the host used to forward: the TV says how full its buffer is, and plays on.
+    event(player, args, 'buffering', {'value': true});
+    for (var ms = 0; ms <= 1000; ms += 250) {
+      event(player, args, 'position', {'positionMs': ms});
+    }
+    expect(player.state.buffering, isFalse);
+    // The host reads the position every 250 ms: five reads without a move are not yet 1.5 s.
+    for (var read = 0; read < 5; read++) {
+      event(player, args, 'position', {'positionMs': 1000});
+    }
+    expect(player.state.buffering, isFalse);
+    event(player, args, 'position', {'positionMs': 1000});
+    expect(player.state.buffering, isTrue);
+    event(player, args, 'position', {'positionMs': 1250});
+    expect(player.state.buffering, isFalse);
+  });
+
+  test('a pause and the end are not stalls', () async {
+    final player = PlayerTizen();
+    addTearDown(player.dispose);
+    await player.open(Media('https://example.test/video.mp4'));
+    final args = Map.of(calls.last.arguments as Map);
+    event(player, args, 'ready', {'durationMs': 20000, 'tracks': []});
+    void standStill() {
+      event(player, args, 'playing', {'value': true});
+      for (var read = 0; read < 7; read++) {
+        event(player, args, 'position', {'positionMs': 1000});
+      }
+    }
+
+    standStill();
+    expect(player.state.buffering, isTrue);
+    event(player, args, 'playing', {'value': true});
+    expect(player.state.buffering, isTrue, reason: 'a play that changes nothing leaves the stall standing');
+    // As the host pauses: its last position, then the pause.
+    event(player, args, 'position', {'positionMs': 1000});
+    event(player, args, 'playing', {'value': false});
+    expect(player.state.buffering, isFalse);
+    // Paused, the host reads the position only once more, after a seek.
+    event(player, args, 'position', {'positionMs': 1000});
+    expect(player.state.buffering, isFalse);
+
+    standStill();
+    expect(player.state.buffering, isTrue);
+    event(player, args, 'completed');
+    expect(player.state.buffering, isFalse);
+  });
+
+  test('a reopen counts afresh, and a channel is not watched', () async {
+    final player = PlayerTizen();
+    addTearDown(player.dispose);
+    Future<Map> open({bool isLive = false}) async {
+      await player.open(Media('https://example.test/video.mp4'), isLive: isLive);
+      final args = Map.of(calls.last.arguments as Map);
+      // As the host opens: ready, where it stands, then playing.
+      event(player, args, 'ready', {'durationMs': 20000, 'tracks': []});
+      event(player, args, 'position', {'positionMs': 1000});
+      event(player, args, 'playing', {'value': true});
+      return args;
+    }
+
+    void stand(Map args, int reads) {
+      for (var read = 0; read < reads; read++) {
+        event(player, args, 'position', {'positionMs': 1000});
+      }
+    }
+
+    var args = await open();
+    stand(args, 6);
+    expect(player.state.buffering, isTrue);
+    // A reconnect reopens where the stream dropped: standing there is no stall yet.
+    args = await open();
+    stand(args, 5);
+    expect(player.state.buffering, isFalse);
+    stand(args, 1);
+    expect(player.state.buffering, isTrue);
+
+    // Unverified on the TV: a channel's position may never move.
+    args = await open(isLive: true);
+    stand(args, 12);
+    expect(player.state.buffering, isFalse);
+  });
+
   test('only a connection failure is tagged as one', () async {
     final player = PlayerTizen();
     addTearDown(player.dispose);

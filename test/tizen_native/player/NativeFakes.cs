@@ -83,7 +83,6 @@ namespace Tizen.Multimedia
         public int GetDuration() => 60000;
         public VideoProperties GetVideoProperties() => new VideoProperties();
     }
-    public class BufferingArgs : EventArgs { public int Percent { get; set; } }
     public class SubtitleArgs : EventArgs
     {
         public string Text { get; set; }
@@ -131,7 +130,6 @@ namespace Tizen.Multimedia
         public PlayerTrackInfo AudioTrackInfo { get; }
         public PlayerTrackInfo SubtitleTrackInfo { get; }
         public EventHandler PlaybackCompleted { get; set; }
-        public EventHandler<BufferingArgs> BufferingProgressChanged { get; set; }
         public EventHandler<SubtitleArgs> SubtitleUpdated { get; set; }
         public EventHandler<ErrorArgs> ErrorOccurred { get; set; }
         private readonly TaskCompletionSource<bool> prepared = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);

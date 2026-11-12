@@ -78,6 +78,20 @@ class PlayerTizen extends PlayerBase with VideoRectSupport {
   int? _width, _height;
   Duration? _pendingSeek;
   Future<void>? _seekWork;
+
+  // The TV's player says how full its buffer is, not that it waits, and plays on
+  // under 100 %: flutter-tizen's own video plugins start a wait only at 5 %, and
+  // another Samsung TV app (pley-media-server/pley) measured it. What tells a
+  // wait is the position: a stall is one standing still while it plays.
+  // ponytail: 1.5 s as pley's PlaybackWatch has it, counted in the host's 250 ms
+  // reads; resize from a device trace.
+  static const _stallReads = 6;
+  int? _lastPositionMs;
+  int _stillReads = 0;
+  // ponytail: whether a channel's position runs on this TV is unverified, and one
+  // that never moved would hold the spinner up for good; watch channels too once
+  // a device trace shows it does.
+  bool _live = false;
   final caption = ValueNotifier<String>('');
   Timer? _captionTimer;
   HttpClient? _captionClient;
@@ -119,6 +133,13 @@ class PlayerTizen extends PlayerBase with VideoRectSupport {
         super.handlePlayerEvent('playback-restart', null);
       case 'position':
         final ms = data?['positionMs'] as int? ?? 0;
+        _stillReads = ms == _lastPositionMs ? _stillReads + 1 : 0;
+        _lastPositionMs = ms;
+        final stalled = !_live && state.playing && _stillReads >= _stallReads;
+        if (stalled != state.buffering) {
+          if (stalled) appLogger.i('Tizen: standing still at $ms ms, taken as a stall');
+          handlePropertyChange('paused-for-cache', stalled);
+        }
         handlePropertyChange('time-pos', ms / 1000);
         if (_cues.isNotEmpty) {
           // ponytail: bounded 2 MiB text file; a cue interval index if measured scans become costly.
@@ -126,11 +147,12 @@ class PlayerTizen extends PlayerBase with VideoRectSupport {
         }
       case 'playing':
         final playing = data?['value'] == true;
+        // A pause is not a stall, and a resume has its time to move. A play that
+        // changes nothing leaves a stall standing.
+        if (playing != state.playing) _stillReads = 0;
+        if (!playing && state.buffering) handlePropertyChange('paused-for-cache', false);
         handlePropertyChange('pause', !playing);
         if (playing) super.handlePlayerEvent('playback-restart', null);
-      case 'buffering':
-        // Buffering percent is NOT a fraction of the whole file cached.
-        handlePropertyChange('paused-for-cache', data?['value'] == true);
       case 'audio':
         updateSelectedAudioTrack(data?['id']);
       case 'subtitle':
@@ -142,6 +164,7 @@ class PlayerTizen extends PlayerBase with VideoRectSupport {
           if (!disposed && generation == _subtitleGeneration) caption.value = '';
         });
       case 'completed':
+        if (state.buffering) handlePropertyChange('paused-for-cache', false);
         handlePropertyChange('pause', true);
         super.handlePlayerEvent('end-file', {'reason': 'eof'});
         _clearCaption();
@@ -212,6 +235,9 @@ class PlayerTizen extends PlayerBase with VideoRectSupport {
     final startPosition = media.start ?? timelineOffset;
     final session = ++_session;
     _pendingSeek = null;
+    _live = isLive;
+    _lastPositionMs = null;
+    _stillReads = 0;
     _clearCaption();
     _external
       ..clear()
