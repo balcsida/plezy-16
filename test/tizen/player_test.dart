@@ -84,6 +84,25 @@ void main() {
     expect(player.currentPosition, const Duration(seconds: 3));
   });
 
+  test('a stacked part plays in its own time and reports on the item timeline', () async {
+    final player = PlayerTizen();
+    addTearDown(player.dispose);
+    // The second file of an item whose first runs ten minutes, resumed two minutes into it.
+    await player.open(
+      Media('https://example.test/part2.mp4', start: const Duration(minutes: 12)),
+      play: false,
+      timelineOffset: const Duration(minutes: 10),
+    );
+    final args = Map.of(calls.last.arguments as Map);
+    expect(args['startMs'], 120000);
+    event(player, args, 'ready', {'durationMs': 600000, 'tracks': []});
+    event(player, args, 'position', {'positionMs': 180000});
+    expect(player.currentPosition, const Duration(minutes: 13));
+    await player.seek(const Duration(minutes: 15));
+    expect((calls.last.arguments as Map)['positionMs'], 300000);
+    expect(player.currentPosition, const Duration(minutes: 15));
+  });
+
   test('native track IDs are not Jellyfin indexes and switching never plays', () async {
     final player = PlayerTizen();
     addTearDown(player.dispose);

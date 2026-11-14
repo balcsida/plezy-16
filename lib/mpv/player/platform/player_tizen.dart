@@ -205,9 +205,11 @@ class PlayerTizen extends PlayerBase with VideoRectSupport {
     bool isLive = false,
     List<SubtitleTrack>? externalSubtitles,
     Duration? timelineDuration,
+    Duration timelineOffset = Duration.zero,
   }) async {
     if (disposed) throw StateError('Player disposed');
     final agent = userAgentFor(media);
+    final startPosition = media.start ?? timelineOffset;
     final session = ++_session;
     _pendingSeek = null;
     _clearCaption();
@@ -217,9 +219,9 @@ class PlayerTizen extends PlayerBase with VideoRectSupport {
     _nativeTracks.clear();
     clearTracks();
     setExternalSubtitleMetadata(externalSubtitles);
-    configureTimeline(duration: timelineDuration);
+    configureTimeline(duration: timelineDuration, offset: timelineOffset);
     takeSourceOwnership();
-    resetPlaybackProgress(media.start ?? Duration.zero);
+    resetPlaybackProgress(startPosition);
     handlePropertyChange('pause', true);
     handlePropertyChange('paused-for-cache', true);
     super.handlePlayerEvent('start-file', null);
@@ -228,7 +230,7 @@ class PlayerTizen extends PlayerBase with VideoRectSupport {
       await _call<void>('open', {
         'url': media.uri,
         'userAgent': agent,
-        'startMs': media.start?.inMilliseconds ?? 0,
+        'startMs': sourcePositionFor(startPosition).inMilliseconds,
         'play': play,
         'audioOnly': audioOnly,
         'volume': _volume,
@@ -274,7 +276,7 @@ class PlayerTizen extends PlayerBase with VideoRectSupport {
       final target = _pendingSeek!;
       final session = _session;
       _pendingSeek = null;
-      await _call<void>('seek', {'positionMs': target.inMilliseconds.clamp(0, 2147483647)}, session);
+      await _call<void>('seek', {'positionMs': sourcePositionFor(target).inMilliseconds.clamp(0, 2147483647)}, session);
       if (session == _session && !disposed) publishPlayheadRelocation(target);
     }
   }
