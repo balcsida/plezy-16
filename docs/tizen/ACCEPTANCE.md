@@ -251,6 +251,23 @@ channels for device evidence.
   a resume re-probes it. The app now treats an unreported wake as that resume.
   `check.sh` passes (302 tests, 3 skipped; 19 Tizen-defined) and the native
   host checks pass 7/7 and 11/11. Device confirmation is pending.
+- The port was rebased from the 2.22.0 tag (`1c2381f0`) onto the 2.26.0 tag
+  (`671a0d7b`), 254 upstream commits. Upstream 2.26.0 still builds with
+  Flutter 3.47.1, so the toolchain pins are unchanged; the manifest version is
+  now 2.26.0. Its new plugins are the store purchase ones, which only
+  `SUPPORTER_MODE=iap` builds reach, so no Tizen plugin was added. Six of the
+  66 port commits conflicted. Upstream's new behaviour is kept with the Tizen
+  gating re-applied: the player screen's mpv configuration block, audio
+  passthrough (now offered on iOS and macOS, still not on Tizen), the new
+  `isTVDevice` (true on Tizen), the in-player audio filter items, and the
+  fork guards on upstream's workflows. The relay generator no longer writes
+  Dart, so its Python 3.8 workaround went; it runs under 3.8 as upstream has
+  it. Upstream now plays a Plex movie split across part files as one item and
+  gives `Player.open` the part's place on the timeline; the Tizen player takes
+  it and opens and seeks a part in its own time. `check.sh` passes (324 tests,
+  3 skipped; 20 Tizen-defined), the full suite passes 8,462 tests (10
+  skipped), and the native host checks pass 7/7 and 11/11. Device
+  confirmation of the 2.26.0 build is pending.
 
 ## Verification tiers
 
