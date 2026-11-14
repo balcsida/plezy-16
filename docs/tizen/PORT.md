@@ -18,7 +18,7 @@ pins, including the host-test SDK compatibility patch, are `tizen/toolchain.json
 
 - Verified GitHub `/repos/edde746/plezy/releases/latest`: stable 2.26.0,
   published 2026-11-09, neither draft nor prerelease. 2.25.0 is superseded.
-- Workspace origin is balcsida/plezy, upstream is edde746/plezy. Clean before
+- Workspace origin is balcsida/plezy-16, upstream is edde746/plezy. Clean before
   `gh tidy`; integration branch `feat/tizen-6-tv` is rebased onto the 2.26.0 tag.
 - George-Fam/plezy-tizen's true common ancestor with the selected release is
   recorded in the lock. Its ten subsequent commits are port work plus SDK/API

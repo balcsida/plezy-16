@@ -67,7 +67,7 @@ jobs:
     # fork pull requests never receive these secrets.
     needs: tv-arm-release
     if: >-
-      github.repository == 'balcsida/plezy' &&
+      github.repository == 'balcsida/plezy-16' &&
       (github.event_name == 'workflow_dispatch' ||
       startsWith(github.ref, 'refs/tags/tizen-v'))
     runs-on: ubuntu-22.04
