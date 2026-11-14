@@ -95,6 +95,8 @@ void main() {
   tearDown(() async {
     binder.dispose();
     multiServerProvider.dispose();
+    // Cancels retries a failed bind scheduled on the manager.
+    manager.dispose();
     await activeProfile.resetForTesting();
     activeProfile.dispose();
     await plexHome.dispose();
@@ -359,7 +361,7 @@ void main() {
     /// Two local profiles on one Plex account, as on a shared Plex Home:
     /// plex.tv serves `srv-1` for A's token and fails B's resource refresh,
     /// so B still expects `srv-1` but cannot bind it.
-    Future<({Profile a, Profile b})> setUpSharedAccount() async {
+    Future<({Profile a, Profile b})> setUpSharedAccount({List<Duration>? offlineRetryDelays}) async {
       PackageInfo.setMockInitialValues(
         appName: 'Plezy',
         packageName: 'com.example.plezy',
@@ -372,7 +374,7 @@ void main() {
       PlexApiCache.initialize(db);
       binder.dispose();
       multiServerProvider.dispose();
-      controlled = _ControlledConnectManager();
+      controlled = _ControlledConnectManager(offlineRetryDelays: offlineRetryDelays);
       manager = controlled;
       multiServerProvider = testMultiServerProvider(manager);
       binder = ActiveProfileBinder(
@@ -459,6 +461,21 @@ void main() {
       await manager.reconnectOfflineServers();
       await pumpUntil(() async => multiServerProvider.onlineServerIds.contains('srv-1'));
       expect(controlled.connectedTokens, everyElement('server-token-a'));
+    });
+
+    test('an expected server that answers after the bind gave up comes online without a Reconnect press', () async {
+      await setUpSharedAccount(offlineRetryDelays: const [Duration.zero]);
+      // Asleep for the bind's probe; woken by it, the server answers the retry
+      // (#3075).
+      controlled
+        ..reachable = true
+        ..failingDiscoveries = 1;
+
+      await binder.rebindActive();
+      expect(activeProfile.lastBindingSucceeded, isFalse);
+
+      await pumpUntil(() async => multiServerProvider.onlineServerIds.contains('srv-1'));
+      expect(controlled.connectedTokens, ['server-token-a']);
     });
     test('a server plex.tv no longer lists is dropped although it was cached', () async {
       await setUpSharedAccount();
@@ -1727,11 +1744,12 @@ class _BlockingMixedMultiServerManager extends MultiServerManager {
 /// Real [MultiServerManager] registration bookkeeping, with Plex endpoint
 /// discovery gated on [reachable] and clients built without a network.
 class _ControlledConnectManager extends MultiServerManager {
-  _ControlledConnectManager() : this._(<String>[]);
+  _ControlledConnectManager({List<Duration>? offlineRetryDelays}) : this._(<String>[], offlineRetryDelays);
 
-  _ControlledConnectManager._(this.connectedTokens)
+  _ControlledConnectManager._(this.connectedTokens, List<Duration>? offlineRetryDelays)
     : super(
         connectivityChanges: () => const Stream.empty(),
+        offlineRetryDelays: offlineRetryDelays,
         plexClientFactory:
             (
               config, {
@@ -1757,6 +1775,10 @@ class _ControlledConnectManager extends MultiServerManager {
   /// PMS tokens of every client the factory built.
   final List<String> connectedTokens;
   bool reachable = false;
+
+  /// Discoveries that fail before [reachable] applies, as for a server that
+  /// is still waking up.
+  int failingDiscoveries = 0;
 
   /// When set, only connections at this address answer.
   String? liveAddress;
@@ -1793,6 +1815,10 @@ class _GatedPlexServer extends PlexServer {
     String? clientIdentifier,
     void Function(bool)? onTranscoderCapability,
   }) {
+    if (_manager.failingDiscoveries > 0) {
+      _manager.failingDiscoveries--;
+      return const Stream.empty();
+    }
     if (!_manager.reachable) return const Stream.empty();
     final liveAddress = _manager.liveAddress;
     final live = connections.where((c) => liveAddress == null || c.address == liveAddress);

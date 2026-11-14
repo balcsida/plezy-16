@@ -1701,6 +1701,8 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
           unawaited(() async {
             await _serverManager.checkServerHealth();
             await _serverManager.reconnectOfflineServers();
+            // A server woken by that probe may answer seconds later (#3075).
+            _serverManager.scheduleOfflineReconnectRetries();
             await _serverManager.reoptimizeDemotedServers(reason: 'resume');
           }());
         }
