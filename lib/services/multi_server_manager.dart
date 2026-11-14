@@ -1435,7 +1435,12 @@ class MultiServerManager {
     _syncRelayEscape(serverId);
   }
 
-  /// Attempt full reconnection for a single offline server
+  /// Attempt full reconnection for a single offline server.
+  ///
+  /// A client whose token and profile scope still apply is kept and pointed at
+  /// the endpoint that answers, as [_reoptimizeServer] does for an online one:
+  /// the player, scrobblers and downloads hold that instance, and replacing it
+  /// would close it under them for the rest of their work.
   Future<void> _reconnectServer(ServerId serverId, PlexServer server) async {
     final clientId = _resolveClientIdentifier(serverId);
     if (clientId == null) {
@@ -1450,6 +1455,13 @@ class MultiServerManager {
 
     try {
       appLogger.d('Attempting reconnection for ${server.name}');
+      final existing = _clients[serverId];
+      if (existing is PlexClient &&
+          existing.profileScopeId == profileScopeId &&
+          existing.config.token == server.accessToken) {
+        await _reconnectExistingClient(serverId, server, existing, clientId: clientId, profileScopeId: profileScopeId);
+        return;
+      }
       final client = await _createClientForServer(
         server: server,
         clientIdentifier: clientId,
@@ -1476,6 +1488,35 @@ class MultiServerManager {
       // come back on a new LAN address or remote-access port (#2616).
       if (identical(_plexServers[serverId], server)) await _refreshPlexServerList(serverId);
     }
+  }
+
+  Future<void> _reconnectExistingClient(
+    ServerId serverId,
+    PlexServer server,
+    PlexClient client, {
+    required String clientId,
+    required PlexProfileScopeId profileScopeId,
+  }) async {
+    final storage = await StorageService.getInstance();
+    final connections = StreamIterator(
+      server.findBestWorkingConnection(preferredUri: storage.getServerEndpoint(serverId), clientIdentifier: clientId),
+    );
+    if (!await connections.moveNext()) {
+      await connections.cancel();
+      throw Exception('No working connection found');
+    }
+    final stale =
+        _resolveClientIdentifier(serverId) != clientId ||
+        _plexScopeByServer[serverId] != profileScopeId ||
+        !await _promoteEndpoint(client: client, server: server, storage: storage, newUrl: connections.current.uri);
+    if (stale) {
+      await connections.cancel();
+      appLogger.d('Ignoring stale reconnection result for ${server.name}');
+      return;
+    }
+    _drainOptimizationStream(connections, client: client, server: server, storage: storage);
+    updateServerStatus(serverId, true);
+    appLogger.i('Successfully reconnected to ${server.name}');
   }
 
   /// Run [plexServerListRefresher] for the account that owns [serverId],

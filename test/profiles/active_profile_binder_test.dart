@@ -10,6 +10,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:plezy/connection/connection.dart';
 import 'package:plezy/connection/connection_registry.dart';
 import 'package:plezy/database/app_database.dart';
+import 'package:plezy/media/media_server_client.dart';
 import 'package:plezy/models/plex/plex_home_user.dart';
 import 'package:plezy/profiles/active_profile_binder.dart';
 import 'package:plezy/profiles/active_profile_provider.dart';
@@ -461,6 +462,21 @@ void main() {
       await manager.reconnectOfflineServers();
       await pumpUntil(() async => multiServerProvider.onlineServerIds.contains('srv-1'));
       expect(controlled.connectedTokens, everyElement('server-token-a'));
+    });
+
+    test('a Plex server back from offline keeps the client its holders were given', () async {
+      await setUpSharedAccount();
+      controlled.reachable = true;
+      await binder.rebindActive();
+      final held = manager.getPlexClient(ServerId('srv-1'))!;
+
+      manager.updateServerStatus(ServerId('srv-1'), false);
+      await manager.reconnectOfflineServers();
+
+      expect(manager.isServerOnline(ServerId('srv-1')), isTrue);
+      expect(manager.getPlexClient(ServerId('srv-1')), same(held));
+      expect(controlled.connectedTokens, hasLength(1), reason: 'no replacement client was built');
+      expect(await held.checkHealth(), HealthStatus.online, reason: 'the held client was not closed');
     });
 
     test('an expected server that answers after the bind gave up comes online without a Reconnect press', () async {
