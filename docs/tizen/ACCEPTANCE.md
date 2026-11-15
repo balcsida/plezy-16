@@ -291,6 +291,17 @@ channels for device evidence.
   the native host checks pass 9/9 and 11/11, and the bridge compiles against
   the API-6 reference assemblies. Device confirmation is pending: whether the
   reloads stop, how a stall reads in the log, and what a tier costs on a seek.
+- The operator then asked whether downloads work on the TV. They do not: the
+  download service has been off on Tizen since the port, as on Apple TV, but
+  the controls were hidden with an Apple TV check alone. The TV showed a
+  Downloads tab, download buttons, sync entries and a Downloads settings
+  section, and a download reported "Download queued" while queuing nothing.
+  Those controls now ask `PlatformDetector.supportsDownloads()`, false on Tizen
+  and on Apple TV; offline, the TV lands on Settings as Apple TV does. A USB
+  drive would not have helped: the package holds no storage privilege and the
+  app has no way to pick a drive. `check.sh` passes (329 tests, 5 skipped; 26
+  Tizen-defined, 1 skipped) and the full suite passes 8,467 tests (12 skipped).
+  Device confirmation is pending.
 
 ## Verification tiers
 
