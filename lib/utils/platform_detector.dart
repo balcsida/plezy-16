@@ -234,7 +234,9 @@ class PlatformDetector {
     return _tizen || TvDetectionService.isTVDeviceSync();
   }
 
-  static bool supportsDownloads() => !_tizen;
+  /// Whether the download service runs here. It is off on Tizen and on Apple
+  /// TV, where a download control would queue nothing.
+  static bool supportsDownloads() => !_tizen && !isAppleTV();
   static bool supportsGamepads() => !_tizen;
   static bool supportsSystemMediaControls() => !_tizen;
 

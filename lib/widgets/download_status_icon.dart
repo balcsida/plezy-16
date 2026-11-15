@@ -54,7 +54,7 @@ class DownloadStatusIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (PlatformDetector.isAppleTV()) return const SizedBox.shrink();
+    if (!PlatformDetector.supportsDownloads()) return const SizedBox.shrink();
     final s = status;
     if (s == null) return const SizedBox.shrink();
 

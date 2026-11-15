@@ -601,7 +601,7 @@ List<FocusableAction> buildSyncRuleActions(
   required bool showDownload,
   required VoidCallback onDownload,
 }) {
-  if (PlatformDetector.isAppleTV()) return const [];
+  if (!PlatformDetector.supportsDownloads()) return const [];
   return [
     if (showDownload)
       FocusableAction(

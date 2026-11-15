@@ -204,7 +204,7 @@ class _AlbumDetailScreenState extends BaseMediaListDetailScreen<AlbumDetailScree
   /// states in compact form. Hidden on Apple TV (no user-accessible storage)
   /// and when no [DownloadProvider] is in scope.
   FocusableAction? _downloadAction() {
-    if (PlatformDetector.isAppleTV()) return null;
+    if (!PlatformDetector.supportsDownloads()) return null;
     if (widget.album.serverId == null || context.read<DownloadProvider?>() == null) return null;
 
     return FocusableAction(

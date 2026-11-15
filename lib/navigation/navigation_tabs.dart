@@ -50,7 +50,7 @@ class NavigationTab {
       if (isOffline && tab.onlineOnly) return false;
       if (tab.id == NavigationTabId.liveTv && !hasLiveTv) return false;
       if (tab.id == NavigationTabId.explore && !hasExplore) return false;
-      if (tab.id == NavigationTabId.downloads && PlatformDetector.isAppleTV()) return false;
+      if (tab.id == NavigationTabId.downloads && !PlatformDetector.supportsDownloads()) return false;
       return true;
     }).toList();
   }
