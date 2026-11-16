@@ -117,8 +117,9 @@ class Program
         await Call("open", 3, "extra_large");
         var time = Player.Last.BufferingSet;
         Check(time?.ReBufferMillisecond == 20000 && time?.PreBufferMillisecond == 0, "Extra Large waits for 20 s, and the start stays the TV's own");
-        await Call("open", 4, "extra_large", "file:///opt/usr/media/test.mp4");
+        await Call("open", 4, "extra_large", "file:///opt/usr/media/100% test.mp4");
         Check(Player.Last.BufferingSet == null, "A file is not streamed: its buffering is left alone");
+        Check(Player.Last.Source == "file:///opt/usr/media/100% test.mp4", "A file's path reaches the player as written");
     }
     static async Task BufferTierRefused()
     {

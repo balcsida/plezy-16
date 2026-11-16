@@ -12,7 +12,16 @@ import '../media/media_item.dart';
 import '../media/media_item_types.dart';
 import '../utils/app_logger.dart';
 import '../utils/formatters.dart';
+import '../utils/platform_detector.dart';
 import 'settings_service.dart';
+
+/// Mount points of the USB drives a Tizen TV holds, read from the text of
+/// `/proc/mounts`. The TV has no folder picker, so these are what it offers.
+List<String> tizenUsbMountPoints(String procMounts) => {
+  for (final line in const LineSplitter().convert(procMounts))
+    if (line.split(' ') case [_, final mountPoint, ...] when mountPoint.startsWith('/opt/media/'))
+      mountPoint.replaceAll(r'\040', ' '),
+}.toList();
 
 /// Thrown when the downloads storage layer cannot create or access a directory
 /// (permission denied, quota exceeded, SAF permission revoked, etc.).
@@ -174,6 +183,15 @@ class DownloadStorageService {
         return _baseDownloadsDir!;
       }
       // Fall through to default if custom path is not writable
+    }
+    // The TV's own storage is small, and background_downloader keeps no free-space floor on
+    // 32-bit ARM: a download there could fill it. A chosen USB drive, or no download.
+    if (PlatformDetector.isTizen()) {
+      throw DownloadStorageException(
+        'No writable USB download folder',
+        _customDownloadPath ?? '',
+        StateError('Unavailable'),
+      );
     }
 
     final baseDir = await _getBaseAppDir();

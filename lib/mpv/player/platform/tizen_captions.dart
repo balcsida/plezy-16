@@ -33,6 +33,12 @@ List<TizenCue> parseTizenCaptions(String source) {
 /// Bounded, TLS-validating fetch. Redirects stay on the original origin; no
 /// Authorization/Cookie header is copied to another server. URLs never log.
 Future<List<TizenCue>> loadTizenCaptions(Uri uri, HttpClient client) async {
+  // A downloaded item's sidecar file, under the same size bound as a fetched one.
+  if (uri.isScheme('file')) {
+    final file = File.fromUri(uri);
+    if (await file.length() > 2 * 1024 * 1024) throw const FormatException('Subtitle exceeds 2 MiB text limit');
+    return parseTizenCaptions(await file.readAsString());
+  }
   final origin = uri.origin;
   for (var redirects = 0; redirects <= 3; redirects++) {
     if (!['http', 'https'].contains(uri.scheme) || uri.userInfo.isNotEmpty || uri.origin != origin) {

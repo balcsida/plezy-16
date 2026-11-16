@@ -13,5 +13,6 @@
     <privilege>http://tizen.org/privilege/network.get</privilege>
     <privilege>http://tizen.org/privilege/display</privilege>
     <privilege>http://tizen.org/privilege/appmanager.launch</privilege>
+    <privilege>http://tizen.org/privilege/externalstorage</privilege>
   </privileges>
 </manifest>

@@ -76,7 +76,7 @@ namespace Tizen.Multimedia
         public bool IsVisible { get; set; }
         public void SetRoi(Rectangle rectangle) { }
     }
-    public class MediaUriSource { public MediaUriSource(string uri) { } }
+    public class MediaUriSource { public readonly string Uri; public MediaUriSource(string uri) { Uri = uri; } }
     public struct PlayerBufferingTime
     {
         public int PreBufferMillisecond, ReBufferMillisecond;
@@ -165,7 +165,8 @@ namespace Tizen.Multimedia
             if (Disposed) throw new ObjectDisposedException(nameof(Player));
             if (Array.IndexOf(states, State) < 0) throw new InvalidOperationException();
         }
-        public void SetSource(MediaUriSource source) => Require(PlayerState.Idle);
+        public string Source;
+        public void SetSource(MediaUriSource source) { Require(PlayerState.Idle); Source = source.Uri; }
         public Task PrepareAsync(CancellationToken token)
         {
             Require(PlayerState.Idle);

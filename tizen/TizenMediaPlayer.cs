@@ -175,7 +175,8 @@ namespace Runner
                     Emit("error", new Dictionary<string, object> { ["code"] = e.Error.ToString() });
                     Release();
                 });
-                opened.SetSource(new MediaUriSource(uri.ToString()));
+                // A file keeps its path as written: Uri.ToString() escapes a lone '%' in a name.
+                opened.SetSource(new MediaUriSource(uri.IsFile ? (string)args["url"] : uri.ToString()));
                 await opened.PrepareAsync(cancellation);
                 if (!IsCurrent(gen, opened)) return;
                 // API 6 retains its cancellation callback after preparation.

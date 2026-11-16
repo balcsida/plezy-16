@@ -30,17 +30,7 @@ void main() {
   Iterable<NavigationTabId> tabs({required bool isOffline}) =>
       NavigationTab.getVisibleTabs(isOffline: isOffline).map((tab) => tab.id);
 
-  testWidgets('Tizen offers no downloads', (tester) async {
-    // The download service is off there, as on Apple TV: a control would queue nothing.
-    expect(PlatformDetector.supportsDownloads(), isFalse);
-    expect(tabs(isOffline: false), isNot(contains(NavigationTabId.downloads)));
-    // Offline has no downloads to open either: it lands on Settings.
-    expect(tabs(isOffline: true), [NavigationTabId.settings]);
-    await tester.pumpWidget(const Center(child: DownloadStatusIcon(status: DownloadStatus.completed)));
-    expect(tester.getSize(find.byType(DownloadStatusIcon)), Size.zero);
-  }, skip: !const bool.fromEnvironment('TIZEN_BUILD'));
-
-  testWidgets('a non-Tizen build keeps its downloads, except on Apple TV', (tester) async {
+  testWidgets('downloads are offered, on Tizen too, except on Apple TV', (tester) async {
     expect(PlatformDetector.supportsDownloads(), isTrue);
     expect(tabs(isOffline: false), contains(NavigationTabId.downloads));
     await tester.pumpWidget(
@@ -55,5 +45,5 @@ void main() {
     addTearDown(() => TvDetectionService.debugSetAppleTVOverride(null));
     expect(PlatformDetector.supportsDownloads(), isFalse);
     expect(tabs(isOffline: false), isNot(contains(NavigationTabId.downloads)));
-  }, skip: const bool.fromEnvironment('TIZEN_BUILD'));
+  });
 }

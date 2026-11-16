@@ -35,6 +35,7 @@ import '../../services/settings_mutation_service.dart';
 import '../../services/supporter/supporter_mode.dart';
 import '../../widgets/background_download_warning_banner.dart';
 import '../../services/update_service.dart';
+import '../../utils/app_logger.dart';
 import '../../utils/dialogs.dart';
 import '../../utils/snackbar_helper.dart';
 import '../../utils/platform_detector.dart';
@@ -771,6 +772,24 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
           selectedPath = await safStorage.pickDirectory();
           if (!mounted) return false;
           if (selectedPath != null) pathType = 'saf';
+        } else if (PlatformDetector.isTizen()) {
+          // The TV has no folder picker: offer the USB drives it has mounted.
+          final mounts = await File('/proc/mounts').readAsString();
+          if (!mounted) return false;
+          final drives = tizenUsbMountPoints(mounts);
+          if (drives.isEmpty) {
+            appLogger.i('No USB drive mounted under /opt/media:\n$mounts');
+            showErrorSnackBar(context, t.settings.downloadLocationPickerUnavailable);
+            return false;
+          }
+          final drive = await showOptionPickerDialog<String>(
+            context,
+            title: t.settings.selectFolder,
+            options: [for (final drive in drives) (icon: Symbols.usb_rounded, label: drive, value: drive)],
+          );
+          if (!mounted) return false;
+          // Artwork goes beside the downloads folder, so both stay under Plezy/.
+          if (drive != null) selectedPath = '$drive/Plezy/downloads';
         } else {
           selectedPath = await FilePickerService.instance.getDirectoryPath(dialogTitle: t.settings.selectFolder);
           if (!mounted) return false;
