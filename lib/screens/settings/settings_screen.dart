@@ -422,6 +422,8 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
   Widget _buildDownloadsSection() {
     final storageService = DownloadStorageService.instance;
     final isCustom = storageService.isUsingCustomPath();
+    // The TV downloads to a USB drive or not at all: its own storage is never shown as the location.
+    final noLocation = PlatformDetector.isTizen() && !isCustom;
 
     return SettingsGroup(
       title: t.settings.downloads,
@@ -430,11 +432,17 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
           FutureBuilder<String>(
             future: storageService.getCurrentDownloadPathDisplay(),
             builder: (context, snapshot) {
-              final currentPath = snapshot.data ?? '...';
+              final currentPath = noLocation ? t.settings.downloadLocationDescription : snapshot.data ?? '...';
               return FocusableListTile(
                 focusNode: _focusTracker.get(_kDownloadLocation),
                 leading: const AppIcon(Symbols.folder_rounded, fill: 1),
-                title: Text(isCustom ? t.settings.downloadLocationCustom : t.settings.downloadLocationDefault),
+                title: Text(
+                  isCustom
+                      ? t.settings.downloadLocationCustom
+                      : noLocation
+                      ? t.settings.selectFolder
+                      : t.settings.downloadLocationDefault,
+                ),
                 subtitle: Text(currentPath, maxLines: 2, overflow: .ellipsis),
                 trailing: const AppIcon(Symbols.chevron_right_rounded, fill: 1),
                 onTap: () => _showDownloadLocationDialog(),
@@ -717,16 +725,18 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
           crossAxisAlignment: .start,
           children: [
             Text(t.settings.downloadLocationDescription),
-            const SizedBox(height: 16),
-            FutureBuilder<String>(
-              future: storageService.getCurrentDownloadPathDisplay(),
-              builder: (context, snapshot) {
-                return Text(
-                  t.settings.currentPath(path: snapshot.data ?? '...'),
-                  style: Theme.of(context).textTheme.bodySmall,
-                );
-              },
-            ),
+            if (isCustom || !PlatformDetector.isTizen()) ...[
+              const SizedBox(height: 16),
+              FutureBuilder<String>(
+                future: storageService.getCurrentDownloadPathDisplay(),
+                builder: (context, snapshot) {
+                  return Text(
+                    t.settings.currentPath(path: snapshot.data ?? '...'),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  );
+                },
+              ),
+            ],
           ],
         ),
         actions: [
@@ -774,7 +784,7 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
           if (selectedPath != null) pathType = 'saf';
         } else if (PlatformDetector.isTizen()) {
           // The TV has no folder picker: offer the USB drives it has mounted.
-          final mounts = await File('/proc/mounts').readAsString();
+          final mounts = await readTizenMounts();
           if (!mounted) return false;
           final drives = tizenUsbMountPoints(mounts);
           if (drives.isEmpty) {
@@ -796,7 +806,10 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
         }
         if (selectedPath == null) return false;
 
-        final writableChecker = widget.downloadDirectoryWritableChecker;
+        // A TV mounts NTFS read-only: say the folder is not writable, not that the save failed.
+        final writableChecker =
+            widget.downloadDirectoryWritableChecker ??
+            (PlatformDetector.isTizen() ? DownloadStorageService.instance.isDirectoryWritable : null);
         if (pathType == 'file' && writableChecker != null) {
           final isWritable = await writableChecker(Directory(selectedPath));
           if (!mounted) return false;

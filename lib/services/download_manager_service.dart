@@ -38,6 +38,7 @@ import '../utils/codec_utils.dart';
 import '../utils/connectivity_link_type.dart';
 import '../utils/global_key_utils.dart';
 import '../utils/error_message_utils.dart';
+import '../utils/platform_detector.dart';
 import '../utils/storage_failure.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
@@ -2168,7 +2169,10 @@ class DownloadManagerService {
     appLogger.e('Failed to prepare download for $globalKey', error: e, stackTrace: st);
     // `toString()` carries the runtime type, request host and path; the row
     // gets the localized reason and the log keeps the detail.
-    final errorMessage = t.downloads.errorDownloadFailedWithReason(reason: localizedErrorReason(e));
+    // On the TV a storage failure is the USB drive: point at the download location.
+    final errorMessage = PlatformDetector.isTizen() && e is DownloadStorageException
+        ? t.downloads.storageUnavailable
+        : t.downloads.errorDownloadFailedWithReason(reason: localizedErrorReason(e));
     final existing = await _database.getDownloadedMedia(globalKey);
     if (_isRetryablePrepareFailure(e) &&
         existing != null &&
@@ -2316,6 +2320,21 @@ class DownloadManagerService {
         safRootUri = rootUri;
       } else {
         await _replaceDownloadSafRootClaim(globalKey, null);
+
+        // The TV's own storage is small, and background_downloader keeps no free-space floor
+        // on 32-bit ARM: a download goes onto a mounted USB drive or fails.
+        if (PlatformDetector.isTizen()) {
+          final mounts = await readTizenMounts();
+          var root = (await _storageService.getDownloadsDirectory()).path;
+          if (!isOnTizenUsbDrive(mounts, root)) {
+            // The root may have been resolved while the drive was away: probe it once more.
+            await _refreshDownloadStorage();
+            root = (await _storageService.getDownloadsDirectory()).path;
+          }
+          if (!isOnTizenUsbDrive(mounts, root)) {
+            throw DownloadStorageException('No USB drive to download to', root, StateError('Not a mounted USB drive'));
+          }
+        }
 
         // Normal mode: DownloadTask writes to a .part file and moves it on completion.
         final String firstFilePath;
@@ -2690,6 +2709,8 @@ class DownloadManagerService {
   }
 
   bool _isRetryablePrepareFailure(Object error) {
+    // The TV's drive may be spinning up after a standby, or just plugged in.
+    if (PlatformDetector.isTizen() && error is DownloadStorageException) return true;
     if (error is! MediaServerHttpException || error.isCancellation) return false;
     final status = error.statusCode;
     if (status == 401 || status == 403) return false;
