@@ -319,17 +319,25 @@ channels for device evidence.
   prompt. The TV has no folder picker, so Settings > Downloads lists the mounts
   under `/opt/media` from `/proc/mounts` and stores `<drive>/Plezy/downloads`.
   The TV's own storage is never used: `background_downloader` skips its
-  free-space floor on 32-bit ARM, so with no writable USB folder a download
-  fails instead. A downloaded item's sidecar subtitle is read from its file,
+  free-space floor on 32-bit ARM, so a download whose folder is not on a
+  mounted drive fails instead, after three retries 30 s apart for a drive that
+  is slow to mount. A downloaded item's sidecar subtitle is read from its file,
   and a file's path reaches the native player as written: `Uri.ToString()`
   turned a lone `%` in a title into `%25`. Read from source, not run: on Linux
   targets the downloader is pure Dart (isolates, `dart:io`), and its isolates
   reach `path_provider_tizen` through the generated plugin registrant.
-  `check.sh` passes (331 tests, 5 skipped; 29 Tizen-defined), the full suite
-  passes 8,469 tests (12 skipped) and the native player checks pass 9/9.
   The device evidence above has the operator's confirmation of a download.
-  Whether a download survives a standby and whether the player opens a
-  `file://` path with spaces and brackets are still unknown.
+  An independent review then moved the refusal from the storage service to the
+  enqueue, where it asks the mount table: thrown from the service, it also
+  stopped a delete from finding its files. `check.sh` passes (332 tests, 4
+  skipped; 29 Tizen-defined), the full suite passes 8,470 tests (11 skipped)
+  and the native player checks pass 9/9. Known limits: a stored path names the
+  mount (`USBDriveA1`), so a drive mounted under another name reads as
+  missing; artwork is kept on the TV while the drive is away; and a download
+  deleted while the drive is away leaves its files on the drive. Still
+  unknown: whether a download survives a standby, whether the player opens a
+  `file://` path with spaces and brackets, and whether it decodes an original
+  the server would have transcoded for the TV.
 
 ## Verification tiers
 
