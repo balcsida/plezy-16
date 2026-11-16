@@ -302,6 +302,24 @@ channels for device evidence.
   app has no way to pick a drive. `check.sh` passes (329 tests, 5 skipped; 26
   Tizen-defined, 1 skipped) and the full suite passes 8,467 tests (12 skipped).
   Device confirmation is pending.
+- Downloads are then switched on for the TV as an experiment, to a USB drive
+  only. The service gate is upstream's again (off on Apple TV alone) and
+  `supportsDownloads()` follows it. The manifest gains the `externalstorage`
+  privilege, which the Flutter-Tizen plugin READMEs say a TV grants without a
+  prompt. The TV has no folder picker, so Settings > Downloads lists the mounts
+  under `/opt/media` from `/proc/mounts` and stores `<drive>/Plezy/downloads`.
+  The TV's own storage is never used: `background_downloader` skips its
+  free-space floor on 32-bit ARM, so with no writable USB folder a download
+  fails instead. A downloaded item's sidecar subtitle is read from its file,
+  and a file's path reaches the native player as written: `Uri.ToString()`
+  turned a lone `%` in a title into `%25`. Read from source, not run: on Linux
+  targets the downloader is pure Dart (isolates, `dart:io`), and its isolates
+  reach `path_provider_tizen` through the generated plugin registrant.
+  `check.sh` passes (331 tests, 5 skipped; 29 Tizen-defined), the full suite
+  passes 8,469 tests (12 skipped) and the native player checks pass 9/9.
+  Nothing here has run on a TV: whether the drive is listed and writable,
+  whether a download completes and survives a standby, and whether the player
+  opens a `file://` path with spaces and brackets are all unknown.
 
 ## Verification tiers
 
