@@ -182,6 +182,16 @@ channels for device evidence.
   against the requested checks: Home opens the launcher while browsing and during
   playback, and the controls stay visible over video after playback starts and
   after returning from Home. This is functional confirmation by observation.
+- The signed artifact of `workflow_dispatch` run 43928364476 (source revision
+  `37820f16`, TPK SHA-256
+  `be2d10ada634b3db0a2a05286ce4d3a4354b31ab9cab67152f81319ebf738766`) matched
+  `SHA256SUMS` locally. It is the first build with downloads on, and the
+  operator reported from the TV that a download to the external drive "works
+  perfectly". The drive can only be chosen in the new picker, so the TV lists
+  it, lets the app write to it and runs the downloader to completion. This is
+  functional confirmation by observation; the installation was not observed
+  here. Not reported: playing the downloaded copy and its sidecar subtitles, a
+  standby during a download, and a drive that is unplugged.
 
 ## Current host regression evidence
 
@@ -317,9 +327,9 @@ channels for device evidence.
   reach `path_provider_tizen` through the generated plugin registrant.
   `check.sh` passes (331 tests, 5 skipped; 29 Tizen-defined), the full suite
   passes 8,469 tests (12 skipped) and the native player checks pass 9/9.
-  Nothing here has run on a TV: whether the drive is listed and writable,
-  whether a download completes and survives a standby, and whether the player
-  opens a `file://` path with spaces and brackets are all unknown.
+  The device evidence above has the operator's confirmation of a download.
+  Whether a download survives a standby and whether the player opens a
+  `file://` path with spaces and brackets are still unknown.
 
 ## Verification tiers
 
