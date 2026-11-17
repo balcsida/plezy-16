@@ -190,8 +190,16 @@ channels for device evidence.
   perfectly". The drive can only be chosen in the new picker, so the TV lists
   it, lets the app write to it and runs the downloader to completion. This is
   functional confirmation by observation; the installation was not observed
-  here. Not reported: playing the downloaded copy and its sidecar subtitles, a
-  standby during a download, and a drive that is unplugged.
+  here.
+- A second signed artifact followed the review (run 43956116805, source
+  revision `8413d4f4`, TPK SHA-256
+  `ac0944a5e7a3d3701e9a9e70fb8ee21b6aca982bef152c4f429f42363ec03069`, matched
+  `SHA256SUMS` locally). The operator then reported that the downloaded copy
+  plays, without saying on which of the two builds. Every download's file name
+  ends in a space and a bracketed tag, so the native player opens such a
+  `file://` path. Not reported: sidecar subtitles, an original the server
+  would have transcoded for the TV, a standby during a download, and a drive
+  that is unplugged or mounted under another name.
 
 ## Current host regression evidence
 
@@ -334,10 +342,10 @@ channels for device evidence.
   and the native player checks pass 9/9. Known limits: a stored path names the
   mount (`USBDriveA1`), so a drive mounted under another name reads as
   missing; artwork is kept on the TV while the drive is away; and a download
-  deleted while the drive is away leaves its files on the drive. Still
-  unknown: whether a download survives a standby, whether the player opens a
-  `file://` path with spaces and brackets, and whether it decodes an original
-  the server would have transcoded for the TV.
+  deleted while the drive is away leaves its files on the drive. The operator
+  has since confirmed that a downloaded copy plays. Still unknown: whether a
+  download survives a standby, and whether the player decodes an original the
+  server would have transcoded for the TV.
 
 ## Verification tiers
 
