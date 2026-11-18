@@ -195,11 +195,13 @@ channels for device evidence.
   revision `8413d4f4`, TPK SHA-256
   `ac0944a5e7a3d3701e9a9e70fb8ee21b6aca982bef152c4f429f42363ec03069`, matched
   `SHA256SUMS` locally). The operator then reported that the downloaded copy
-  plays, without saying on which of the two builds. Every download's file name
-  ends in a space and a bracketed tag, so the native player opens such a
-  `file://` path. Not reported: sidecar subtitles, an original the server
-  would have transcoded for the TV, a standby during a download, and a drive
-  that is unplugged or mounted under another name.
+  plays and that its subtitles work, without saying on which of the two builds
+  or whether the subtitles were in the file or a downloaded sidecar. Every
+  download's file name ends in a space and a bracketed tag, so the native
+  player opens such a `file://` path. An original the server would transcode
+  for the TV is untried: the operator streams originals from Jellyfin, which
+  is the file a download fetches. Not reported: a standby during a download,
+  and a drive that is unplugged or mounted under another name.
 
 ## Current host regression evidence
 
@@ -343,9 +345,9 @@ channels for device evidence.
   mount (`USBDriveA1`), so a drive mounted under another name reads as
   missing; artwork is kept on the TV while the drive is away; and a download
   deleted while the drive is away leaves its files on the drive. The operator
-  has since confirmed that a downloaded copy plays. Still unknown: whether a
-  download survives a standby, and whether the player decodes an original the
-  server would have transcoded for the TV.
+  has since confirmed that a downloaded copy plays, with subtitles. Still
+  unknown: whether a download survives a standby, and whether the player
+  decodes an original the server would have transcoded for the TV.
 
 ## Verification tiers
 
