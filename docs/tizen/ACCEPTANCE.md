@@ -200,8 +200,11 @@ channels for device evidence.
   download's file name ends in a space and a bracketed tag, so the native
   player opens such a `file://` path. An original the server would transcode
   for the TV is untried: the operator streams originals from Jellyfin, which
-  is the file a download fetches. Not reported: a standby during a download,
-  and a drive that is unplugged or mounted under another name.
+  is the file a download fetches. In the operator's one standby test with a
+  download running, the TV came back to its home screen with Plezy 16 closed,
+  so the download stopped with the app. What it does when the app is opened
+  again is not reported yet. Not reported: a drive that is unplugged or
+  mounted under another name.
 
 ## Current host regression evidence
 
@@ -345,9 +348,14 @@ channels for device evidence.
   mount (`USBDriveA1`), so a drive mounted under another name reads as
   missing; artwork is kept on the TV while the drive is away; and a download
   deleted while the drive is away leaves its files on the drive. The operator
-  has since confirmed that a downloaded copy plays, with subtitles. Still
-  unknown: whether a download survives a standby, and whether the player
-  decodes an original the server would have transcoded for the TV.
+  has since confirmed that a downloaded copy plays, with subtitles. A standby
+  closed the app. Read from source, not run: when the app next opens, the
+  downloader deletes the partial file and re-enqueues the task from the start,
+  and that restart, like the resume of a paused download, does not pass the
+  mount check; it creates its folder itself, so with the drive away it writes
+  wherever the path leads if an app may create a folder under `/opt/media`,
+  which is unknown. Still unknown: whether that restart completes on the TV,
+  and whether the player decodes an original the server would have transcoded.
 
 ## Verification tiers
 
