@@ -789,7 +789,8 @@ class _SettingsScreenState extends State<SettingsScreen> with FocusableTab, Moun
           final drives = tizenUsbMountPoints(mounts);
           if (drives.isEmpty) {
             appLogger.i('No USB drive mounted under /opt/media:\n$mounts');
-            showErrorSnackBar(context, t.settings.downloadLocationPickerUnavailable);
+            // Not downloadLocationPickerUnavailable: the TV can pick a folder, it has no drive to offer.
+            showErrorSnackBar(context, t.libraries.noFoldersFound);
             return false;
           }
           final drive = await showOptionPickerDialog<String>(
