@@ -203,8 +203,12 @@ channels for device evidence.
   is the file a download fetches. In the operator's one standby test with a
   download running, the TV came back to its home screen with Plezy 16 closed,
   so the download stopped with the app. What it does when the app is opened
-  again is not reported yet. Not reported: a drive that is unplugged or
-  mounted under another name.
+  again is not reported yet. With the drive unplugged the operator got the
+  picker's message for no drive, so the TV takes an unplugged drive out of its
+  mount table, which is what the enqueue check reads. The message said folder
+  selection is not available on this device; it now says no folders were
+  found. Not reported: a download started or restarted with the drive
+  unplugged, and a drive mounted under another name.
 
 ## Current host regression evidence
 
