@@ -389,9 +389,18 @@ channels for device evidence.
 - `d-vid-balatoni` is what Cloudflare made of the account's name. The operator
   asked for `balcsida` in its place, so `PLEZY_SERVER_URL` is now
   `https://tizenhat.balcsida.workers.dev`. The account's `workers.dev`
-  subdomain can only be changed in the dashboard, which the operator has yet
-  to do: until then this address does not answer, and a build that names it
-  cannot upload. The earlier address stops answering with the change.
+  subdomain can only be changed in the dashboard, which the operator did. The
+  account then listed the Worker at the new address and the earlier one
+  stopped answering at once. The new name took some minutes to resolve, and a
+  resolver that had been asked for it too early kept answering that it does
+  not exist for up to 30 minutes more (the zone's negative TTL). Through the
+  address the public resolvers return, from a workstation: an upload returned
+  an ID, the log read back, and a log uploaded under the earlier address was
+  still there. The signed artifact of run 44830549295 (source revision
+  `73af2a17`, TPK SHA-256
+  `d6acbf6980d720922bed4d9868ee60713a24673c64f3c9c15f4f4e088f3f4e33`) matched
+  `SHA256SUMS`, and its `libapp.so` holds the new address and neither the
+  earlier one nor `ice.plezy.app`. An upload from the TV is still untried.
 
 ## Verification tiers
 
