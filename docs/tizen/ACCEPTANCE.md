@@ -372,6 +372,20 @@ channels for device evidence.
   key fails `test/tizen/defines_test.dart`; both were tried on the host.
   `check.sh` passes (332 tests, 5 skipped; 30 Tizen-defined) and the full suite
   passes 8,470 tests (12 skipped). Log upload has never been tried from the TV.
+- The operator chose Cloudflare's free plan over a hosted copy of `server/`,
+  and the log upload first. `worker/` is a rewrite of that part as a Worker
+  with one SQLite-backed Durable Object, keeping the server's limits and
+  answers; its three tests run in the Workers runtime and fail when a limit is
+  loosened. It is deployed as `tizenhat` on the operator's account, at
+  `https://tizenhat.d-vid-balatoni.workers.dev`, and `PLEZY_SERVER_URL` in
+  `scripts/tizen/defines.env` names it. Against the deployed Worker, from a
+  workstation: an upload returned a six-character ID, the log read back under
+  an upper-case spelling of it, a second upload within the minute got 429 and
+  an unknown ID 404. The Worker has no sign-in proxy, so with this value the
+  MyAnimeList and AniList sign-in fail on the TV; Trakt, Simkl and MDBList
+  still use upstream's registrations. `check.sh` passes (332 tests, 5 skipped;
+  30 Tizen-defined). Not tried: an upload from the TV, which is also the first
+  HTTPS request from this app to a public host that anyone has watched.
 
 ## Verification tiers
 
