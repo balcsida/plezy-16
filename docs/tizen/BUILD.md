@@ -91,8 +91,15 @@ The release command retains these required arguments:
 
 ```text
 build tpk --release --device-profile tv --target-arch arm
-  --dart-define=TIZEN_BUILD=true --security-profile <profile> --no-pub
+  --dart-define=TIZEN_BUILD=true --dart-define-from-file=scripts/tizen/defines.env
+  --security-profile <profile> --no-pub
 ```
+
+`scripts/tizen/defines.env` holds the fork's own build-time values: the URL of
+its `server/` instance and its tracker registrations. A key that is not set
+keeps upstream's value. `check.sh` compiles the Tizen-defined tests with the
+same file, and `test/tizen/defines_test.dart` fails on a key the app does not
+read, which would otherwise leave upstream's value in the build unnoticed.
 
 ## Outputs
 

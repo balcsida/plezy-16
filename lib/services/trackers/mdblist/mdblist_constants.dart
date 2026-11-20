@@ -9,7 +9,10 @@ class MdblistConstants {
 
   /// Registered MDBList Device Code app client ID. Public by design: the
   /// device-code grant authenticates the user, not the binary.
-  static const String clientId = 'xOUwKUPdGEbHif6aKwW2gCxCAvFx7m0Q3jX0ZxXZ';
+  static const String clientId = String.fromEnvironment(
+    'MDBLIST_CLIENT_ID',
+    defaultValue: 'xOUwKUPdGEbHif6aKwW2gCxCAvFx7m0Q3jX0ZxXZ',
+  );
 
   static const String apiBase = 'https://api.mdblist.com';
   static const String webBase = 'https://mdblist.com';

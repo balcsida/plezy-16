@@ -10,8 +10,14 @@ class TraktConstants {
   // SharedPreferences — extractable from the binary, but acceptable for a
   // native client app. To rotate, update the registration at
   // https://trakt.tv/oauth/applications.
-  static const String clientId = '9861e686e95c13409dd321736f903973cb9b8e5c6abd0634bec8962f52ea30f4';
-  static const String clientSecret = 'acfa17b9d77fabd7e51175b7da6631aea69423530a6d49b3b3c38cd107cbd207';
+  static const String clientId = String.fromEnvironment(
+    'TRAKT_CLIENT_ID',
+    defaultValue: '9861e686e95c13409dd321736f903973cb9b8e5c6abd0634bec8962f52ea30f4',
+  );
+  static const String clientSecret = String.fromEnvironment(
+    'TRAKT_CLIENT_SECRET',
+    defaultValue: 'acfa17b9d77fabd7e51175b7da6631aea69423530a6d49b3b3c38cd107cbd207',
+  );
 
   static const String apiBase = 'https://api.trakt.tv';
   static const String apiVersion = '2';

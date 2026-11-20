@@ -27,7 +27,10 @@ class SimklConstants {
   /// AUTH V2 app, registered as "TV, devices & command line": device flow
   /// only, no client secret. Public by design — on its own it reaches nothing
   /// but public catalog data.
-  static const String v2ClientId = 'ec68bc6a9d04b3c50af8cc495f9c9bf478c2371b979aed7e3385bdb771b9b18d';
+  static const String v2ClientId = String.fromEnvironment(
+    'SIMKL_CLIENT_ID',
+    defaultValue: 'ec68bc6a9d04b3c50af8cc495f9c9bf478c2371b979aed7e3385bdb771b9b18d',
+  );
 
   static const String apiBase = 'https://api.simkl.com';
   static const String dataBase = 'https://data.simkl.in';
