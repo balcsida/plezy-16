@@ -20,7 +20,7 @@ The 16 is a pun: sixteen is "tizenhat" in Hungarian.
 
 ## Status
 
-Plezy 16 is based on Plezy 2.26.0. So far it has run on one TV, my Samsung UE55AU7022KXXH (Tizen 6.0), with a Jellyfin server. The package is built for Tizen 6.0 TVs with a 32-bit ARM processor, and I don't know if it runs on newer Tizen versions.
+Plezy 16 is based on Plezy 2.26.0. So far it has run on one TV, my Samsung UE55AU7022KXXH (Tizen 6.0), with a Jellyfin server. The package is built for Tizen 6.0 TVs with a 32-bit ARM processor. A TV with an older Tizen refuses to install it, and I don't know if it runs on newer ones.
 
 Seen working on that TV:
 
@@ -53,6 +53,8 @@ Plezy 16 is not in Samsung's app store, so it has to be sideloaded.
 1. Turn on Developer Mode on the TV ([how to](https://github.com/Apps2Samsung/Apps2Samsung/wiki/FAQ#-how-to-enable-developer-mode-on-your-tv)).
 2. Download `plezy-tizen-6-arm-release.tpk` from the [latest release](https://github.com/balcsida/plezy-16/releases/latest). The `SHA256SUMS` file next to it has its checksum.
 3. Install it with [Apps2Samsung](https://github.com/Apps2Samsung/Apps2Samsung): pick the downloaded `.tpk` as your own app and press Install. It signs the package for your TV and installs it.
+
+Apps2Samsung can also take `balcsida/plezy-16` as a source of your own. It then lists the newest release itself, so you can skip the download.
 
 If you would rather use the Tizen SDK and your own certificate, see [Signing for a Samsung TV](docs/tizen/BUILD.md#signing-for-a-samsung-tv).
 
