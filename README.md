@@ -1,333 +1,108 @@
 <h1>
-  <img src="assets/plezy.png" alt="Plezy Logo" height="24" style="vertical-align: middle;" />
-  Plezy
+  <img src="assets/plezy.png" alt="Plezy 16 logo" height="24" style="vertical-align: middle;" />
+  Plezy 16
 </h1>
 
-A modern client for Plex, Jellyfin, and Emby on desktop, mobile, and TV. Built with Flutter for native performance and a clean interface.
+Plezy 16 is an unofficial fork of [Plezy](https://github.com/edde746/plezy) for Samsung TVs running Tizen 6.0. Plezy is a client for Plex, Jellyfin and Emby, built with Flutter. This fork packages it as a native TV app and plays video with the TV's own player instead of mpv.
+
+> [!IMPORTANT]
+> This is not an official Plezy build. The Plezy project doesn't maintain or support it, so please report problems in [this repository](https://github.com/balcsida/plezy-16/issues) and not upstream.
 
 <p>
-  <a href="https://plezy.app">Website</a> ·
-  <a href="https://plezy.app/#screenshots">Screenshots</a> ·
-  <a href="#download">Download</a> ·
-  <a href="CONTRIBUTING.md">Contributing</a> ·
+  <a href="https://github.com/balcsida/plezy-16/releases">Releases</a> ·
+  <a href="#install">Install</a> ·
+  <a href="docs/tizen/BUILD.md">Building</a> ·
+  <a href="docs/tizen/ACCEPTANCE.md">Test log</a> ·
   <a href="LICENSE">License</a>
 </p>
 
-<p align="center">
-  <img src="assets/readme-showcase.webp" alt="Plezy mobile screenshots" width="900" />
-</p>
+The 16 is a pun: sixteen is "tizenhat" in Hungarian.
 
-## Download
+## Status
 
-<a href='https://apps.apple.com/app/apple-store/id6754315964?pt=128238902&ct=GitHub&mt=8'><img height='60' alt='Download on the App Store' src='./assets/app-store-badge.png'/></a>
-<a href='https://play.google.com/store/apps/details?id=com.edde746.plezy&referrer=utm_source%3Dgithub%26utm_campaign%3Dreadme_badge'><img height='60' alt='Get it on Google Play' src='./assets/play-store-badge.png'/></a>
-<a href='https://www.amazon.com/gp/product/B0GK65CVS1'><img height='60' alt='Available at the Amazon App Store' src='./assets/amazon-badge.png'/></a>
-<a href='https://get.microsoft.com/installer/download/9n5r1s1t68h7?referrer=appbadge&cid=github'><img height='60' alt='Get it from Microsoft' src='./assets/microsoft-badge.png'/></a>
+Plezy 16 is based on Plezy 2.26.0. So far it has run on one TV, my Samsung UE55AU7022KXXH (Tizen 6.0), with a Jellyfin server. The package is built for Tizen 6.0 TVs with a 32-bit ARM processor. A TV with an older Tizen refuses to install it, and I don't know if it runs on newer ones.
 
-| Platform | Download |
-| --- | --- |
-| macOS | [DMG (x64, arm64)](https://github.com/edde746/plezy/releases/latest/download/plezy-macos.dmg) |
-| Linux x64 | [.deb](https://github.com/edde746/plezy/releases/latest/download/plezy-linux-x64.deb) · [.rpm](https://github.com/edde746/plezy/releases/latest/download/plezy-linux-x64.rpm) · [.pkg.tar.zst](https://github.com/edde746/plezy/releases/latest/download/plezy-linux-x64.pkg.tar.zst) · [.flatpak](https://github.com/edde746/plezy/releases/latest/download/plezy-linux-x64.flatpak) · [.AppImage](https://github.com/edde746/plezy/releases/latest/download/plezy-linux-x64.AppImage) · [portable tar.gz](https://github.com/edde746/plezy/releases/latest/download/plezy-linux-x64.tar.gz) |
-| Linux arm64 | [.deb](https://github.com/edde746/plezy/releases/latest/download/plezy-linux-arm64.deb) · [.rpm](https://github.com/edde746/plezy/releases/latest/download/plezy-linux-arm64.rpm) · [.pkg.tar.zst](https://github.com/edde746/plezy/releases/latest/download/plezy-linux-arm64.pkg.tar.zst) · [.flatpak](https://github.com/edde746/plezy/releases/latest/download/plezy-linux-arm64.flatpak) · [.AppImage](https://github.com/edde746/plezy/releases/latest/download/plezy-linux-arm64.AppImage) · [portable tar.gz](https://github.com/edde746/plezy/releases/latest/download/plezy-linux-arm64.tar.gz) |
+Seen working on that TV:
 
-<details>
-<summary>Install with a package manager</summary>
+- Signing in to Jellyfin and browsing
+- Playing video with audio, seeking and the on-screen controls
+- Downloading to a USB drive and playing the downloaded copy, with subtitles
+- Installing a new version over the old one, without the app's data being cleared
 
-### macOS — Homebrew
+Not tried on the TV: Emby, music and Watch Together.
 
-```bash
-brew tap edde746/plezy https://github.com/edde746/plezy
-brew install --cask plezy
-```
+Plex and Live TV are not tried either, and I expect playback to fail there. Both send extra headers with a stream, the TV's player can't send them, and the app refuses to play rather than leave them out.
 
-### Windows — WinGet
+[docs/tizen/ACCEPTANCE.md](docs/tizen/ACCEPTANCE.md) is the full log of what was tested and how.
 
-```bash
-winget install edde746.Plezy
-```
+## What is different on the TV
 
-### Linux — Flatpak
+- The app asks Jellyfin for H.264 video up to 1080p (8-bit) with stereo AAC audio, and the server converts anything else. This is a cautious starting point and not the limit of the TV: HEVC, HDR, AV1 and surround sound are not tested yet, so the app doesn't ask for them.
+- SRT and WebVTT subtitles are drawn by the app. ASS/SSA and image subtitles (PGS, DVD) are burned into the video by the server.
+- There is no mpv, so the settings that only exist for it are hidden (`mpv.conf`, hardware decoding, the deinterlace and downmix filters).
+- External players, audio passthrough, gamepads and the system media controls are off.
+- No DRM, and no private Samsung APIs.
+- No crash reports are sent to the Plezy project, and the app doesn't check for updates. Watch the [releases](https://github.com/balcsida/plezy-16/releases) instead.
 
-Install Flatpak with your distribution's package manager, download the bundle for your architecture above, then run:
+For everything else, see the feature list in the [Plezy README](https://github.com/edde746/plezy#features). Most of it has not been tried on a TV yet.
 
-```bash
-flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-flatpak install --user flathub org.freedesktop.Platform//25.08
-flatpak install --user ./plezy-linux-x64.flatpak
-flatpak run com.edde746.plezy
-```
+## Install
 
-On arm64, install `plezy-linux-arm64.flatpak`.
+Plezy 16 is not in Samsung's app store, so it has to be sideloaded.
 
-<details>
-<summary>Sandbox, playback, and folder access</summary>
+1. Turn on Developer Mode on the TV ([how to](https://github.com/Apps2Samsung/Apps2Samsung/wiki/FAQ#-how-to-enable-developer-mode-on-your-tv)).
+2. Download `plezy-tizen-6-arm-release.tpk` from the [latest release](https://github.com/balcsida/plezy-16/releases/latest). The `SHA256SUMS` file next to it has its checksum.
+3. Install it with [Apps2Samsung](https://github.com/Apps2Samsung/Apps2Samsung): pick the downloaded `.tpk` as your own app and press Install. It signs the package for your TV and installs it.
 
-- Not on Flathub — the remote supplies the Freedesktop runtime only.
-- Video playback needs a Wayland session; a pure X11 session shows the interface but cannot create the video plane.
-- No host or home filesystem access; app data lives in `~/.var/app/com.edde746.plezy/`. Add host folders through the desktop file chooser portal, and keep download folders writable.
-- Network, display, audio, and device access are enabled. `--device=all` (Flatpak 1.14 compatibility) exposes more than GPUs and controllers; session-bus access stays filtered.
+Apps2Samsung can also take `balcsida/plezy-16` as a source of your own. It then lists the newest release itself, so you can skip the download.
 
-</details>
+If you would rather use the Tizen SDK and your own certificate, see [Signing for a Samsung TV](docs/tizen/BUILD.md#signing-for-a-samsung-tv).
 
-### Linux — AppImage
+To update, install the newer release the same way you installed the first one. The TV refuses an update that is signed by a different author, and removing the app first also removes its login and settings.
 
-Download the AppImage for your architecture above, then run:
+## Downloads
 
-```bash
-chmod +x plezy-linux-x64.AppImage
-./plezy-linux-x64.AppImage
-```
+Downloads go to a USB drive. Without one a download fails, so it can't fill up the TV's own storage.
 
-[Gear Lever](https://flathub.org/apps/it.mijorus.gearlever) and AppImageUpdate update it from the latest release. Without FUSE, add `--appimage-extract-and-run`.
+1. Plug in the drive.
+2. In Settings, under Downloads, open Select Folder, press Select Folder in the dialog and pick the drive.
+3. Download something. The files go to `Plezy/downloads` on the drive.
 
-### Arch Linux — Pacman
+A few things to know:
 
-[Distribution package](https://archlinux.org/packages/extra/x86_64/plezy/).
+- A download is the original file from the server, so it only plays if the TV's player can decode it.
+- A FAT32 drive can't hold a file larger than 4 GB.
+- The TV closes the app in standby, so a running download stops. It should start again when you open Plezy 16.
+- If the TV mounts the drive under another name, the downloads show as missing until it is back under the old one.
+- Deleting a download while the drive is unplugged leaves its files on the drive.
 
-```bash
-sudo pacman -S plezy
-```
+## Building
 
-### Fedora / Red Hat — DNF
-
-[Installation instructions](https://github.com/aldobarr/plezy-rpm) · Community repository by [@aldobarr](https://github.com/aldobarr).
-
-### Nix
-
-[Community package](https://search.nixos.org/packages?channel=unstable&query=plezy) maintained by [@mio-19](https://github.com/mio-19) and [@MiniHarinn](https://github.com/MiniHarinn).
-
-### aerynOS — Moss
-
-[Distribution package](https://github.com/aerynOS/recipes/tree/main/p/plezy).
-
-```bash
-sudo moss pad plezy
-```
-
-</details>
-
-## Features
-
-### <img src="assets/readme_icons/browse.svg" height="20" alt="" align="center" /> Browse & Discover
-- Libraries, collections, and playlists — video and audio
-- Shuffle a whole movie or TV library
-- Discover hub — Continue Watching, Next Up, trending, and recommendations
-- Continue Watching shows a title held in several libraries or on several servers once, and asks which copy to play
-- Cross-server search across every connected Plex, Jellyfin, and Emby server, including actors and directors
-- Filtering, sorting, and alphabetical jump navigation
-- Folder browsing and folder playback — home-video libraries open in folder view
-- Resolution, HDR/Dolby Vision, and audio-format badges on cards and detail pages
-- Favorites and unwatched library filters[^mb]
-- Extras — trailers, deleted scenes, behind-the-scenes
-
-### <img src="assets/readme_icons/explore.svg" height="20" alt="" align="center" /> Explore & Requests
-- Explore tab — watchlist, trending, popular, and recommendation rows from Plex Discover[^plex], Trakt, MyAnimeList, AniList, Simkl, and Seerr[^connect]
-- Search any connected catalog source
-- Catalog titles matched back to your own libraries by external ID
-- Seerr — request movies and shows with per-season, 4K, and advanced destination options, and see request status inline
-- Watchlist sync — add and remove titles on Plex, Trakt, MyAnimeList, AniList, and Simkl from anywhere in the app
-
-### <img src="assets/readme_icons/playback.svg" height="20" alt="" align="center" /> Playback
-- Wide codec support (HEVC, AV1, VP9, and more)
-- HDR and Dolby Vision[^hdr]
-- Direct play, or transcode presets from 240p/320 kbps to 1080p/20 Mbps
-- Multi-version switching with per-version file details
-- Full ASS/SSA subtitles with customizable styling
-- Online subtitle search & download[^plex]
-- Audio & subtitle choices remembered per title, or follow the server's per-episode selections
-- Progress sync and resume
-- Auto-play next episode with skip intro / skip credits
-- Chapter navigation with thumbnail scrub previews
-- Playback speed from 0.25x to 8x, audio sync offset, sleep timer (fixed durations or end of video)
-- Video zoom 50-200% with pinch, presets, and hotkeys
-- Audio passthrough[^pass], output channel limit (5.1 or stereo, with center-channel boost), and loudness normalization
-- File Info sheet — every version, file, and stream the server reports
-- Ambient lighting and GLSL shader presets[^mpv]
-- Picture-in-Picture[^pip]
-- Refresh-rate matching[^rrm]
-- External player launch (VLC, MX Player, etc.) with progress sync back[^android]
-
-### <img src="assets/readme_icons/music.svg" height="20" alt="" align="center" /> Music
-- Music libraries — artist, album, and track browsing with square artwork
-- Album and artist screens with play, shuffle, and Instant Mix
-- Gapless playback with a full play queue — reorder, remove, play next, add to queue
-- Now Playing with synced lyrics[^lyrics], persistent mini-player, and sleep timer
-- Background playback with lock-screen, media-key, and notification controls[^bgaudio]
-- Offline playback of downloaded albums and tracks
-- Streaming quality presets — Original, 320, 192, or 128 kbps
-
-### <img src="assets/readme_icons/live-tv.svg" height="20" alt="" align="center" /> Live TV & DVR
-- Live TV channel browsing, tuning, and favorites
-- EPG guide with What's On and per-show schedules
-- DVR recording rules, scheduled recordings, and a rememberable recording target library[^plex]
-- Multi-server Live TV support where available
-
-### <img src="assets/readme_icons/downloads.svg" height="20" alt="" align="center" /> Downloads & Offline
-- Download movies, shows, and music for offline playback[^dl]
-- Background queue with pause / resume
-- Sync rules for automatic downloads, with per-show "Include Specials"
-- Offline browsing with watch state sync-back on reconnect
-
-### <img src="assets/readme_icons/watch-together.svg" height="20" alt="" align="center" /> Watch Together
-- Rooms on [Open Watch Party](https://openwatch.party) — share a six-character code; friends join from Plezy or another Open Watch Party app
-- Everyone plays their own copy from their own server — Plex, Jellyfin, or Emby — matched by catalogue IDs, with a picker when several copies fit
-- Synchronized play / pause / seek, host or shared control, room lock, and host handoff
-- Public relays by default, or point Plezy at your own self-hosted relay
-
-### <img src="assets/readme_icons/integrations.svg" height="20" alt="" align="center" /> Integrations
-- Discord Rich Presence[^desktop]
-- Trakt, MyAnimeList, AniList, and Simkl — ratings, watched sync, and real-time scrobbling[^rt]
-- Scores from connected trackers on detail pages — Trakt, Simkl, MyAnimeList, and AniList, plus Rotten Tomatoes, Metacritic, Letterboxd, IMDb, and TMDB through MDBList
-- Plezy Remote — control desktop and TV from mobile
-- Watch Next row and tvOS Top Shelf[^shelf]
-- [`plezy://` links](#plezy-links) to open a profile, play a title, or tune a channel from Home Assistant, launchers, or an NFC tag; any movie, show, or episode menu shows its link[^links]
-
-### <img src="assets/readme_icons/customization.svg" height="20" alt="" align="center" /> Platform & Customization
-- Desktop, mobile, and TV — full D-pad, keyboard, and gamepad support
-- Multiple servers at once — Plex, Jellyfin, and Emby side by side
-- Profiles with per-profile downloads, watch state, and settings; Plex Home switching with PIN
-- Jellyfin and Emby local-server discovery and multiple URLs per server; Quick Connect sign-in[^jf]
-- TV layout options — corner spotlight backdrop, full-card artwork, and Force TV mode on desktop
-- Customizable keyboard shortcuts[^desktop]
-- Metadata and artwork editing
-- Settings import/export
-- Localized in English plus 21 translations
-
-[^jf]: Jellyfin only.
-[^mb]: Jellyfin and Emby only.
-[^plex]: Plex only.
-[^connect]: Requires connecting the service under Settings > Services.
-[^hdr]: In-app HDR toggle on Windows, macOS, iOS, tvOS, and Linux — Linux needs a colour-managed Wayland compositor. Dolby Vision on Android, macOS, and Apple TV.
-[^pass]: Desktop, Android TV, and Apple TV.
-[^mpv]: Requires the mpv player backend — Android defaults to ExoPlayer. Not applied to Dolby Vision on Apple platforms.
-[^pip]: Android, iOS, and macOS — not on Android TV or Apple TV.
-[^rrm]: Windows, Android, and tvOS.
-[^android]: Progress sync on Android.
-[^lyrics]: Where your server provides lyrics.
-[^bgaudio]: tvOS pauses music when the app is backgrounded.
-[^dl]: Not available on tvOS.
-[^desktop]: Desktop only.
-[^rt]: Real-time scrobbling on Trakt and Simkl; MyAnimeList and AniList update on completion.
-[^shelf]: Android TV / Fire TV and tvOS.
-[^links]: Android, iOS, macOS, and tvOS.
-
-## plezy:// links
-
-Links start Plezy from outside the app. Any link may add `profile=<profile>`: a profile id, a Plex Home user UUID, or a display name (ignoring case; it must match one profile). Plezy switches to that profile first, and a protected profile still asks for its PIN. A link replaces whatever is playing.
-
-| Link | Does |
-|---|---|
-| `plezy://open` | Opens Plezy |
-| `plezy://play?server=<server>&id=<item>` | Plays one item on one server, any backend |
-| `plezy://play?type=movie\|show&tmdb=<n>` | Plays a title from whichever server has it. Use `tmdb`, `tvdb`, `imdb=tt<n>`, or `plex=<hash>` (the Plex GUID without `plex://movie/`) |
-| `plezy://live?channel=<channel>` | Tunes a Live TV channel by key, number, or call sign. Optional `server=<server>` and `start=beginning\|live` |
-
-For a show, `mode=next` (the default) plays the next episode to watch, and `mode=shuffle` plays the show shuffled. The menu of any movie, show, or episode has **Show link**, and each profile's menu in **Switch Profile** has **Show profile link**. Both show the link as text and a QR code.
+Every Flutter and Dart command goes through the pinned Flutter-Tizen toolchain in `scripts/tizen/`, not a separate Flutter install.
 
 ```sh
-# Android / Android TV, over adb (Home Assistant: remote.turn_on with activity: plezy://...)
-adb shell am start -a android.intent.action.VIEW -d "plezy://play?type=show\&tvdb=81189\&profile=Kids"
-# macOS
-open "plezy://play?type=movie&tmdb=603"
+scripts/tizen/bootstrap.sh
+scripts/tizen/pub_get.sh --enforce-lockfile
+scripts/tizen/check.sh
 ```
 
-On iOS, use the Open URLs action in Shortcuts.
+The TV package is built in the container from `scripts/tizen/Dockerfile`. [docs/tizen/BUILD.md](docs/tizen/BUILD.md) has the commands and the signing options, and [docs/tizen/PORT.md](docs/tizen/PORT.md) explains how the port is put together.
 
-## Building from Source
+CI builds a test-signed package for every push, and a `tizen-v*` tag publishes a signed release.
 
-### Prerequisites
-- Flutter SDK 3.47.0+
-- A Plex account, or a Jellyfin or Emby server with user credentials
+## Relation to Plezy
 
-### Setup
+Plezy is made by [@edde746](https://github.com/edde746). He [allowed](https://github.com/edde746/plezy/pull/1164#issuecomment-6780334501) the "Plezy 16" name and the Plezy icon for this fork, and asked for two things: its own package ID (`com.balcsida.plezy16`) and a clear note that it is unofficial. [TRADEMARKS.md](TRADEMARKS.md) has the rules for the Plezy name and logo.
 
-```bash
-git clone https://github.com/edde746/plezy.git
-cd plezy
-flutter pub get
-scripts/codegen.sh
-flutter run
-```
+The Tizen changes sit on top of a Plezy release, 2.26.0 at the moment. Everything that isn't about the TV is upstream's work.
 
-<details>
-<summary>Code generation</summary>
+## Thanks
 
-After modifying model classes or other generated sources:
-
-```bash
-scripts/codegen.sh
-```
-
-After modifying translations:
-
-```bash
-dart run slang
-```
-
-</details>
-
-<details>
-<summary>Packaging a Flatpak bundle</summary>
-
-Packages an **already fully resolved Linux release bundle** — pinned libmpv and bundled libraries included, not a Flathub source-build manifest. Run it on Linux, on the same architecture as the bundle, after following the bundle preparation steps in [the Linux release workflow](.github/workflows/build.yml): `flutter build linux` alone does not produce all the required bundled libraries.
-
-Install the packaging tools (Debian/Ubuntu shown) plus the native-architecture SDK and runtime:
-
-```bash
-sudo apt-get update
-sudo apt-get install -y flatpak flatpak-builder imagemagick
-flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-flatpak install --user flathub org.freedesktop.Platform//25.08 org.freedesktop.Sdk//25.08
-
-BUNDLE_DIR=build/linux/x64/release/bundle
-python3 linux/packaging/build-flatpak.py --bundle "$BUNDLE_DIR" --arch x64 --output "$PWD"
-```
-
-That writes `plezy-linux-x64.flatpak`, installable with the Flatpak commands above; on arm64, use the prepared arm64 bundle directory and `--arch arm64`. Package from the checkout matching the bundle, since the version comes from `pubspec.yaml`.
-
-Cross-architecture packaging needs native Flatpak tools, a registered binfmt interpreter, and the target SDK/runtime installed with `flatpak install --user --arch=x86_64` (or `aarch64`) — never run Flatpak's namespace tools under emulation. Pass `--arch x64` or `--arch arm64` to the checker and the matching Flatpak architecture to `flatpak run --arch=...`.
-
-Check the installed package against the runtime (not just the SDK), then launch it on a Wayland desktop and exercise streaming, audio, downloads/offline playback, and file chooser portals:
-
-```bash
-python3 linux/packaging/check-flatpak.py
-```
-
-The check fails on a non-executable entry point or an unresolved bundled ELF dependency. A container without a GPU can use `flatpak run --env=GALLIUM_DRIVER=softpipe com.edde746.plezy` for software-rendered verification; this is not a hardware-decoding or HDR test.
-
-</details>
-
-<details>
-<summary>Local checks</summary>
-
-```bash
-scripts/ci_checks.sh
-```
-
-To install the same pre-commit checks locally:
-
-```bash
-scripts/setup_hooks.sh
-```
-
-End-to-end tests (Android emulator plus a Dockerized Jellyfin fixture):
-
-```bash
-python3 scripts/maestro/run_maestro.py basic
-```
-
-</details>
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow, formatting, tests, and translation guidelines.
+- [@edde746](https://github.com/edde746) for Plezy.
+- [@George-Fam](https://github.com/George-Fam) for the [first Tizen port](https://github.com/George-Fam/plezy-tizen) ([edde746/plezy#1164](https://github.com/edde746/plezy/pull/1164)), which this fork builds on.
+- [flutter-tizen](https://github.com/flutter-tizen/flutter-tizen) for bringing Flutter to Tizen.
+- [Fladder-Tizen](https://github.com/popdollar/Fladder-Tizen), which showed that native video under Flutter controls works on this TV.
 
 ## License
 
-Plezy is licensed under [GPL-3.0](LICENSE). The license covers the code, not the Plezy name or logo; forks distributed beyond personal use must follow [TRADEMARKS.md](TRADEMARKS.md).
-
-## Acknowledgments
-
-- Built with [Flutter](https://flutter.dev)
-- Supports [Plex Media Server](https://www.plex.tv), [Jellyfin](https://jellyfin.org), and [Emby](https://emby.media)
-- Playback powered by [mpv](https://mpv.io) via our [mpv-build](https://github.com/edde746/mpv-build) pipeline (started as a fork of [MPVKit](https://github.com/mpvkit/MPVKit); on Android through its mpv-android library, whose Kotlin/JNI glue descends from [libmpv-android](https://github.com/jarnedemeulemeester/libmpv-android)), Android [ExoPlayer](https://developer.android.com/media/media3/exoplayer), and [libass-android](https://github.com/peerless2012/libass-android)
+GPL-3.0, like Plezy. See [LICENSE](LICENSE).
