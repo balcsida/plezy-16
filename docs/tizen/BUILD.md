@@ -96,10 +96,28 @@ build tpk --release --device-profile tv --target-arch arm
 ```
 
 `scripts/tizen/defines.env` holds the fork's own build-time values: the URL of
-its `server/` instance and its tracker registrations. A key that is not set
-keeps upstream's value. `check.sh` compiles the Tizen-defined tests with the
+its log server and its tracker registrations. A key that is not set keeps
+upstream's value. `check.sh` compiles the Tizen-defined tests with the
 same file, and `test/tizen/defines_test.dart` fails on a key the app does not
 read, which would otherwise leave upstream's value in the build unnoticed.
+
+## Log server
+
+Settings > Logs uploads to the Cloudflare Worker in `worker/`, a rewrite of the
+log part of upstream's `server/` with the same limits: 1 MB a log, kept three
+days, one upload a minute and ten stored logs an address, 500 in all. Read an
+uploaded log at `<PLEZY_SERVER_URL>/logs/<Log ID>`; whoever has the ID can.
+
+```sh
+cd worker
+bun install
+bun run test   # runs in the Workers runtime
+cf deploy      # needs `cf auth login`
+```
+
+It runs on the Workers Free plan, in one SQLite-backed Durable Object. The
+address is the Worker's name and the account's `workers.dev` subdomain; it is
+compiled into the TV build, so a change of either needs a new build.
 
 ## Outputs
 
