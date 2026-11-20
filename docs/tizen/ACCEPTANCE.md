@@ -360,6 +360,18 @@ channels for device evidence.
   wherever the path leads if an app may create a folder under `/opt/media`,
   which is unknown. Still unknown: whether that restart completes on the TV,
   and whether the player decodes an original the server would have transcoded.
+- `TRADEMARKS.md` asks a distributed fork not to use upstream's server
+  (`ice.plezy.app`: the MyAnimeList and AniList sign-in proxy, log upload) or
+  its tracker registrations, and the TV build used both. The operator wants
+  the fork on its own, with log upload kept. The server URL and the Trakt,
+  Simkl, MDBList and MyAnimeList client values are now build-time values with
+  upstream's as the defaults, set for the TV build in
+  `scripts/tizen/defines.env`. No value is set yet, because the fork has no
+  server instance and no registrations of its own: this build still talks to
+  upstream's. With a value in the file the constant takes it, and a misspelled
+  key fails `test/tizen/defines_test.dart`; both were tried on the host.
+  `check.sh` passes (332 tests, 5 skipped; 30 Tizen-defined) and the full suite
+  passes 8,470 tests (12 skipped). Log upload has never been tried from the TV.
 
 ## Verification tiers
 
