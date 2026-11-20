@@ -386,6 +386,12 @@ channels for device evidence.
   still use upstream's registrations. `check.sh` passes (332 tests, 5 skipped;
   30 Tizen-defined). Not tried: an upload from the TV, which is also the first
   HTTPS request from this app to a public host that anyone has watched.
+- `d-vid-balatoni` is what Cloudflare made of the account's name. The operator
+  asked for `balcsida` in its place, so `PLEZY_SERVER_URL` is now
+  `https://tizenhat.balcsida.workers.dev`. The account's `workers.dev`
+  subdomain can only be changed in the dashboard, which the operator has yet
+  to do: until then this address does not answer, and a build that names it
+  cannot upload. The earlier address stops answering with the change.
 
 ## Verification tiers
 
