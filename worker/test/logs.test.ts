@@ -40,7 +40,7 @@ it("refuses what the server refuses", async () => {
 	expect((await read("zzzzzz")).status).toBe(404);
 	expect((await read("not-an-id")).status).toBe(404);
 	expect((await SELF.fetch("https://example.com/logs")).status).toBe(405);
-	expect((await SELF.fetch("https://example.com/auth/start", { method: "POST" })).status).toBe(404);
+	expect((await SELF.fetch("https://example.com/elsewhere")).status).toBe(404);
 });
 
 it("keeps ten logs an address, for three days, and slows guessing", async () => {
@@ -60,6 +60,12 @@ it("keeps ten logs an address, for three days, and slows guessing", async () => 
 	expect((await read(id, "198.51.100.2")).status).toBe(429);
 	vi.advanceTimersByTime(1_000);
 	expect((await read(id, "198.51.100.2")).status).toBe(200);
+
+	// The budget never grows past ten, however long it rests after one lookup.
+	expect((await read(id, "198.51.100.3")).status).toBe(200);
+	vi.advanceTimersByTime(9_000);
+	for (let i = 0; i < 10; i++) expect((await read(id, "198.51.100.3")).status).toBe(200);
+	expect((await read(id, "198.51.100.3")).status).toBe(429);
 
 	vi.advanceTimersByTime(3 * 24 * 60 * 60 * 1000);
 	expect((await read(id)).status).toBe(404);

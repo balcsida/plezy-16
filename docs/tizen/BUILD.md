@@ -96,17 +96,26 @@ build tpk --release --device-profile tv --target-arch arm
 ```
 
 `scripts/tizen/defines.env` holds the fork's own build-time values: the URL of
-its log server and its tracker registrations. A key that is not set keeps
+its server and its tracker registrations. A key that is not set keeps
 upstream's value. `check.sh` compiles the Tizen-defined tests with the
 same file, and `test/tizen/defines_test.dart` fails on a key the app does not
 read, which would otherwise leave upstream's value in the build unnoticed.
 
-## Log server
+## Our server
 
-Settings > Logs uploads to the Cloudflare Worker in `worker/`, a rewrite of the
-log part of upstream's `server/` with the same limits: 1 MB a log, kept three
-days, one upload a minute and ten stored logs an address, 500 in all. Read an
-uploaded log at `<PLEZY_SERVER_URL>/logs/<Log ID>`; whoever has the ID can.
+The Cloudflare Worker in `worker/` is a rewrite of the two parts of upstream's
+`server/` that the TV build uses, with their limits and answers.
+
+- Log upload (`server/main.go`): Settings > Logs sends a log of up to 1 MB,
+  kept three days; one upload a minute and ten stored logs an address, 500 in
+  all. Read one at `<PLEZY_SERVER_URL>/logs/<Log ID>`; whoever has the ID can.
+- Sign-in proxy for MyAnimeList and AniList (`server/oauth.go`): the TV shows a
+  link as a QR code, a phone signs in at the provider, and the TV is handed the
+  tokens once. Sessions and tokens are held in memory only, for ten minutes.
+  A provider is on once `worker/cloudflare.config.ts` has its client ID. The
+  callbacks to register are `<PLEZY_SERVER_URL>/auth/mal/callback` (an app type
+  without a client secret) and `<PLEZY_SERVER_URL>/auth/anilist/callback`;
+  AniList's secret is set with `cf workers secrets update`, never committed.
 
 ```sh
 cd worker
@@ -115,9 +124,10 @@ bun run test   # runs in the Workers runtime
 cf deploy      # needs `cf auth login`
 ```
 
-It runs on the Workers Free plan, in one SQLite-backed Durable Object. The
-address is the Worker's name and the account's `workers.dev` subdomain; it is
-compiled into the TV build, so a change of either needs a new build.
+It runs on the Workers Free plan, in two Durable Objects. The address is the
+Worker's name and the account's `workers.dev` subdomain; it is compiled into
+the TV build and registered with the providers, so a change of either needs a
+new build and new callbacks.
 
 ## Outputs
 
