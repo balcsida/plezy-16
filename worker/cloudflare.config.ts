@@ -2,8 +2,9 @@ import { bindings, defineConfig, exports } from "cf/config";
 import * as entrypoint from "./src/index.ts" with { type: "cf-worker" };
 
 // Our registrations with the two providers. A provider is off while its ID is
-// empty. The MyAnimeList ID is MAL_CLIENT_ID in scripts/tizen/defines.env too.
-const MAL_CLIENT_ID: string = "";
+// empty. The MyAnimeList ID is MAL_CLIENT_ID in scripts/tizen/defines.env too;
+// it is an app of the type "other", which has no secret.
+const MAL_CLIENT_ID: string = "1edda1cb4901e1e5571a2d189858e4de";
 const ANILIST_CLIENT_ID: string = "";
 
 export default defineConfig({
