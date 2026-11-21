@@ -14,7 +14,10 @@ enum MalRankingType {
 class MalConstants {
   MalConstants._();
 
-  static const String clientId = '463b1c92992505e4bdfcef6aab3aedbe';
+  static const String clientId = String.fromEnvironment(
+    'MAL_CLIENT_ID',
+    defaultValue: '463b1c92992505e4bdfcef6aab3aedbe',
+  );
 
   static const String apiBase = 'https://api.myanimelist.net/v2';
   static const String tokenUrl = 'https://myanimelist.net/v1/oauth2/token';

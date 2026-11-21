@@ -82,7 +82,8 @@ source_hash="$(<"$work/source.sha256")"
 cd "$work/source"
 "$ROOT/scripts/tizen/pub_get.sh" --enforce-lockfile
 "$ROOT/scripts/tizen/flutter.sh" build tpk --release --device-profile tv --target-arch arm \
-	--dart-define=TIZEN_BUILD=true --security-profile "$profile" --no-pub
+	--dart-define=TIZEN_BUILD=true --dart-define-from-file="$ROOT/scripts/tizen/defines.env" \
+	--security-profile "$profile" --no-pub
 packages=(build/tizen/tpk/*.tpk)
 [[ ${#packages[@]} == 1 && -f "${packages[0]}" ]] || {
 	echo 'Expected exactly one release TPK.' >&2
