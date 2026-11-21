@@ -34,7 +34,9 @@ class SimklConstants {
 
   static const String apiBase = 'https://api.simkl.com';
   static const String dataBase = 'https://data.simkl.in';
-  static const String appName = 'plezy';
+
+  /// The name this build gives itself to Simkl; a fork gives its own.
+  static const String appName = String.fromEnvironment('TRACKER_APP_NAME', defaultValue: 'plezy');
 
   /// Sent as `app-version` when the platform cannot report the real one.
   static const String fallbackAppVersion = 'unknown';

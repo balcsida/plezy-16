@@ -20,15 +20,21 @@ void main() {
       'TRAKT_CLIENT_ID': TraktConstants.clientId,
       'TRAKT_CLIENT_SECRET': TraktConstants.clientSecret,
       'SIMKL_CLIENT_ID': SimklConstants.v2ClientId,
+      'TRACKER_APP_NAME': SimklConstants.appName,
       'MDBLIST_CLIENT_ID': MdblistConstants.clientId,
       'MAL_CLIENT_ID': MalConstants.clientId,
     };
     final lines = File('scripts/tizen/defines.env').readAsLinesSync().map((line) => line.trim());
+    final set = <String>{};
     for (final line in lines.where((line) => line.isNotEmpty && !line.startsWith('#'))) {
       final split = line.indexOf('=');
       final key = line.substring(0, split);
       expect(constants[key], line.substring(split + 1), reason: key);
+      set.add(key);
     }
+    // A key left out would leave upstream's server or registration in the TV build.
+    expect(set, constants.keys.toSet());
+    expect(MdblistConstants.appName, SimklConstants.appName);
   }, skip: !const bool.fromEnvironment('TIZEN_BUILD'));
 
   // Trakt gives an app registered for PKCE no secret and asks that none be sent.
