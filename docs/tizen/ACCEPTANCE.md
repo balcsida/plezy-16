@@ -434,6 +434,22 @@ channels for device evidence.
   value (30). AniList is still off. Not tried: a sign-in carried through, from
   the TV or anywhere, so the token exchange with the real MyAnimeList, and
   with it the app type the registration was given, is unproven.
+- The operator then reported that MyAnimeList issued no client secret for the
+  app, which is the kind of registration the proxy needs, and registered an
+  AniList client. Its ID is in `worker/cloudflare.config.ts`; its secret was
+  taken from the operator's clipboard into the Worker's secret store without
+  being shown or written anywhere else. A deploy with the ID and no secret
+  had been refused, leaving the live Worker as it was. On the live Worker
+  afterwards: an AniList start returned a link; the link redirected to
+  AniList's authorize address with this client ID and the callback
+  `https://tizenhat.balcsida.workers.dev/auth/anilist/callback`, and no PKCE
+  parameters; AniList sent the browser on to its login page; a MyAnimeList
+  start still answered 200. AniList needs no value in the app, so the signed
+  package of run 44894723969 (TPK SHA-256
+  `894b7afa1e59d894f2b22b27ebb932db744f18a7f88e435aa049fccb485cdaa5`) serves
+  both. Not tried, for either provider: a sign-in carried through, which is
+  the first time the code is exchanged for tokens and, for AniList, the first
+  use of the secret.
 
 ## Verification tiers
 
