@@ -496,6 +496,12 @@ channels for device evidence.
   upstream's app was not tried. `check.sh` passes (333 tests, 5 skipped; 31
   Tizen-defined) and the full suite passes 8,471 tests (12 skipped), now with
   every value set.
+- The largest log the app sends was tried against the deployed Worker from a
+  workstation, because the free plan allows a Worker 10 ms of CPU time for a
+  request: a body of exactly 1 MiB was accepted (log `cby8sz`) and read back
+  byte for byte. The app sends a log only when asked to, whole and in one
+  request, so an upload is one request of the plan's 100,000 a day. Not
+  tried: an upload from the TV.
 
 ## Verification tiers
 
