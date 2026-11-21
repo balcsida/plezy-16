@@ -234,7 +234,7 @@ class TraktClient implements DisposableTrackerClient {
       body: {
         'refresh_token': refreshToken,
         'client_id': TraktConstants.clientId,
-        'client_secret': TraktConstants.clientSecret,
+        if (TraktConstants.clientSecret.isNotEmpty) 'client_secret': TraktConstants.clientSecret,
         'grant_type': 'refresh_token',
       },
       timeout: TrackerConstants.refreshTimeout,
@@ -274,7 +274,7 @@ class TraktClient implements DisposableTrackerClient {
         body: {
           'token': _session.accessToken,
           'client_id': TraktConstants.clientId,
-          'client_secret': TraktConstants.clientSecret,
+          if (TraktConstants.clientSecret.isNotEmpty) 'client_secret': TraktConstants.clientSecret,
         },
         timeout: TrackerConstants.revokeTimeout,
         operation: 'Trakt token revoke',

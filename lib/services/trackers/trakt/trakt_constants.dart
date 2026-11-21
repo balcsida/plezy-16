@@ -10,6 +10,9 @@ class TraktConstants {
   // SharedPreferences — extractable from the binary, but acceptable for a
   // native client app. To rotate, update the registration at
   // https://trakt.tv/oauth/applications.
+  //
+  // An app Trakt registers for PKCE gets no secret. Built with an empty
+  // TRAKT_CLIENT_SECRET, the app then sends no secret at all, as Trakt asks.
   static const String clientId = String.fromEnvironment(
     'TRAKT_CLIENT_ID',
     defaultValue: '9861e686e95c13409dd321736f903973cb9b8e5c6abd0634bec8962f52ea30f4',
