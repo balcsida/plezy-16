@@ -5,7 +5,7 @@ import * as entrypoint from "./src/index.ts" with { type: "cf-worker" };
 // empty. The MyAnimeList ID is MAL_CLIENT_ID in scripts/tizen/defines.env too;
 // it is an app of the type "other", which has no secret.
 const MAL_CLIENT_ID: string = "1edda1cb4901e1e5571a2d189858e4de";
-const ANILIST_CLIENT_ID: string = "";
+const ANILIST_CLIENT_ID: string = "57675";
 
 export default defineConfig({
 	worker: {
