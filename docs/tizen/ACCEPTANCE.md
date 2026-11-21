@@ -401,6 +401,26 @@ channels for device evidence.
   `d6acbf6980d720922bed4d9868ee60713a24673c64f3c9c15f4f4e088f3f4e33`) matched
   `SHA256SUMS`, and its `libapp.so` holds the new address and neither the
   earlier one nor `ice.plezy.app`. An upload from the TV is still untried.
+- The operator then asked for the MyAnimeList and AniList sign-in.
+  `worker/src/sign-in.ts` is a rewrite of `server/oauth.go` as a second
+  Durable Object that, like the original, holds sessions and tokens in memory
+  only. Its tests run in the Workers runtime against a stand-in provider (9
+  with the log tests), and seven deliberate breakages each fail one: a return
+  that is not single-use, a result handed out twice, junk sessions charged to
+  an address, sessions that never expire, the secret sent to MyAnimeList, a
+  state accepted on the other provider's path, and a result taken by a poll
+  the device gave up on. An independent review against `oauth.go` found no way
+  for anyone but the holder of the device's secret to get the tokens, nor to
+  get them twice. It found one place weaker than the original, that given-up
+  poll, which now loses to the device's latest poll. It also named two
+  weaknesses the original shares and that are left as they are: whoever sees
+  the QR code can sign the TV in to an account of their own, and a person
+  talked into scanning someone else's code signs that someone in; and a few
+  addresses can fill the session table. A flood can use up the free plan's
+  daily requests whatever the Worker does. Deployed with both providers off,
+  because the fork has no registrations yet: on the live Worker a start
+  answers 400 for either, an unknown session 410, and the logs still read
+  back. The TV build is unchanged by this. Not tried: a real sign-in.
 
 ## Verification tiers
 
