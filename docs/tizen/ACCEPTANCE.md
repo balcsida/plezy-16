@@ -467,6 +467,22 @@ channels for device evidence.
   tests (12 skipped). Not tried: a Trakt sign-in carried through, and a token
   refresh or revoke without a secret. Simkl and MDBList still use upstream's
   registrations.
+- The operator registered Simkl and MDBList apps, the last two. Against each
+  provider, from a workstation, with the new client ID: a device code was
+  issued (Simkl's AUTH V2 endpoint, MDBList's device authorization) and a poll
+  before approval answered `authorization_pending`; Simkl also answered a
+  public catalog call that carried the new identity. The app named itself
+  `plezy` to both; the TV build now names itself `plezy-16`
+  (`TRACKER_APP_NAME`), the short lower-case form Simkl's documentation asks
+  for. `scripts/tizen/defines.env` now sets every key the app reads, and the
+  test fails on a key left out as well as on a misspelled one. `check.sh` and
+  the full suite passed before the MDBList value and that last check were
+  added (333 tests, 5 skipped; 31 Tizen-defined; 8,471 in all, 12 skipped);
+  the Tizen-defined tests pass with them. With this the TV build uses none of
+  upstream's server or registrations, except that Simkl's retired AUTH V1
+  client ID is still a constant in the app, used only for a session signed in
+  before Simkl's V2, which this build cannot have. Not tried, for any of the
+  five trackers: a sign-in carried through on the TV.
 
 ## Verification tiers
 
