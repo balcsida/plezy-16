@@ -450,6 +450,23 @@ channels for device evidence.
   both. Not tried, for either provider: a sign-in carried through, which is
   the first time the code is exchanged for tokens and, for AniList, the first
   use of the secret.
+- The operator registered a Trakt app. Trakt now registers apps for PKCE and
+  issued this one no client secret, while the app signs in with Trakt's device
+  codes and sent a secret with every token request. Against Trakt, from a
+  workstation, with this client ID: a device code was issued; a poll for it
+  answered 400, Trakt's "pending", with no secret field, with an empty one
+  and with a wrong one alike, and 404 for a code that does not exist. So the
+  secret is not checked before the user approves; whether it is afterwards
+  cannot be seen without approving a code. Trakt's PKCE page asks that no
+  secret be sent, so the app now leaves the field out when its secret is
+  empty, in the device poll, the refresh and the revoke, and
+  `scripts/tizen/defines.env` sets `TRAKT_CLIENT_ID` and an empty
+  `TRAKT_CLIENT_SECRET`; left unset, the build would send upstream's secret
+  with this ID. A test fails if the field is sent again. `check.sh` passes
+  (333 tests, 5 skipped; 31 Tizen-defined) and the full suite passes 8,471
+  tests (12 skipped). Not tried: a Trakt sign-in carried through, and a token
+  refresh or revoke without a secret. Simkl and MDBList still use upstream's
+  registrations.
 
 ## Verification tiers
 
