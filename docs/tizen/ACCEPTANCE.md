@@ -483,6 +483,19 @@ channels for device evidence.
   client ID is still a constant in the app, used only for a session signed in
   before Simkl's V2, which this build cannot have. Not tried, for any of the
   five trackers: a sign-in carried through on the TV.
+- The operator asked for that last ID to go too. It is a build-time value now
+  (`SIMKL_LEGACY_CLIENT_ID`), upstream's by default, and the TV build sets it
+  to our own Simkl ID, since Simkl registers no new V1 apps. The app picks
+  that ID only for a V1 token, and no build under our package ID could sign
+  in with V1: upstream moved to V2 in 2.23.0 (4 October 2026) and the package
+  ID became ours on 11 November 2026, on 2.26.0. Should one exist anyway:
+  against Simkl, from a workstation, a made-up V1-shaped token with our ID
+  answered 401 `user_token_failed`, which the app takes as a revoked session
+  and asks to sign in again; with an empty ID it answered 412, which the app
+  takes for a rate limit, so the ID is not left empty. A real V1 token from
+  upstream's app was not tried. `check.sh` passes (333 tests, 5 skipped; 31
+  Tizen-defined) and the full suite passes 8,471 tests (12 skipped), now with
+  every value set.
 
 ## Verification tiers
 
