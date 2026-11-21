@@ -20,6 +20,7 @@ void main() {
       'TRAKT_CLIENT_ID': TraktConstants.clientId,
       'TRAKT_CLIENT_SECRET': TraktConstants.clientSecret,
       'SIMKL_CLIENT_ID': SimklConstants.v2ClientId,
+      'SIMKL_LEGACY_CLIENT_ID': SimklConstants.legacyClientId,
       'TRACKER_APP_NAME': SimklConstants.appName,
       'MDBLIST_CLIENT_ID': MdblistConstants.clientId,
       'MAL_CLIENT_ID': MalConstants.clientId,

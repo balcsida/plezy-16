@@ -22,7 +22,10 @@ class SimklConstants {
 
   /// AUTH V1 app. Only used for sessions minted before the V2 cutover; nothing
   /// signs in with it any more. Its tokens never expire and cannot be revoked.
-  static const String legacyClientId = 'ac97718a469c33eab948b63f92226106157e58fdcdd70c1b5857f1779b1d3a6a';
+  static const String legacyClientId = String.fromEnvironment(
+    'SIMKL_LEGACY_CLIENT_ID',
+    defaultValue: 'ac97718a469c33eab948b63f92226106157e58fdcdd70c1b5857f1779b1d3a6a',
+  );
 
   /// AUTH V2 app, registered as "TV, devices & command line": device flow
   /// only, no client secret. Public by design — on its own it reaches nothing
