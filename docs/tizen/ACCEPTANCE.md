@@ -421,6 +421,19 @@ channels for device evidence.
   because the fork has no registrations yet: on the live Worker a start
   answers 400 for either, an unknown session 410, and the logs still read
   back. The TV build is unchanged by this. Not tried: a real sign-in.
+- The operator registered a MyAnimeList app for the fork. Its client ID is in
+  `worker/cloudflare.config.ts`, which switches that provider on, and in
+  `scripts/tizen/defines.env` as `MAL_CLIENT_ID`, because the app refreshes
+  its tokens with MyAnimeList directly. On the live Worker, from a
+  workstation: a start returned a session and a link; the link redirected to
+  MyAnimeList's authorize address with this client ID, the callback
+  `https://tizenhat.balcsida.workers.dev/auth/mal/callback` and a 64-character
+  plain challenge; MyAnimeList answered that address by sending the browser on
+  to its login page rather than refusing the client; and a poll with no result
+  was held 50.1 s and answered 204. The Tizen-defined tests pass with the new
+  value (30). AniList is still off. Not tried: a sign-in carried through, from
+  the TV or anywhere, so the token exchange with the real MyAnimeList, and
+  with it the app type the registration was given, is unproven.
 
 ## Verification tiers
 
