@@ -360,6 +360,148 @@ channels for device evidence.
   wherever the path leads if an app may create a folder under `/opt/media`,
   which is unknown. Still unknown: whether that restart completes on the TV,
   and whether the player decodes an original the server would have transcoded.
+- `TRADEMARKS.md` asks a distributed fork not to use upstream's server
+  (`ice.plezy.app`: the MyAnimeList and AniList sign-in proxy, log upload) or
+  its tracker registrations, and the TV build used both. The operator wants
+  the fork on its own, with log upload kept. The server URL and the Trakt,
+  Simkl, MDBList and MyAnimeList client values are now build-time values with
+  upstream's as the defaults, set for the TV build in
+  `scripts/tizen/defines.env`. No value is set yet, because the fork has no
+  server instance and no registrations of its own: this build still talks to
+  upstream's. With a value in the file the constant takes it, and a misspelled
+  key fails `test/tizen/defines_test.dart`; both were tried on the host.
+  `check.sh` passes (332 tests, 5 skipped; 30 Tizen-defined) and the full suite
+  passes 8,470 tests (12 skipped). Log upload has never been tried from the TV.
+- The operator chose Cloudflare's free plan over a hosted copy of `server/`,
+  and the log upload first. `worker/` is a rewrite of that part as a Worker
+  with one SQLite-backed Durable Object, keeping the server's limits and
+  answers; its three tests run in the Workers runtime and fail when a limit is
+  loosened. It is deployed as `tizenhat` on the operator's account, at
+  `https://tizenhat.d-vid-balatoni.workers.dev`, and `PLEZY_SERVER_URL` in
+  `scripts/tizen/defines.env` names it. Against the deployed Worker, from a
+  workstation: an upload returned a six-character ID, the log read back under
+  an upper-case spelling of it, a second upload within the minute got 429 and
+  an unknown ID 404. The Worker has no sign-in proxy, so with this value the
+  MyAnimeList and AniList sign-in fail on the TV; Trakt, Simkl and MDBList
+  still use upstream's registrations. `check.sh` passes (332 tests, 5 skipped;
+  30 Tizen-defined). Not tried: an upload from the TV, which is also the first
+  HTTPS request from this app to a public host that anyone has watched.
+- `d-vid-balatoni` is what Cloudflare made of the account's name. The operator
+  asked for `balcsida` in its place, so `PLEZY_SERVER_URL` is now
+  `https://tizenhat.balcsida.workers.dev`. The account's `workers.dev`
+  subdomain can only be changed in the dashboard, which the operator did. The
+  account then listed the Worker at the new address and the earlier one
+  stopped answering at once. The new name took some minutes to resolve, and a
+  resolver that had been asked for it too early kept answering that it does
+  not exist for up to 30 minutes more (the zone's negative TTL). Through the
+  address the public resolvers return, from a workstation: an upload returned
+  an ID, the log read back, and a log uploaded under the earlier address was
+  still there. The signed artifact of run 44830549295 (source revision
+  `73af2a17`, TPK SHA-256
+  `d6acbf6980d720922bed4d9868ee60713a24673c64f3c9c15f4f4e088f3f4e33`) matched
+  `SHA256SUMS`, and its `libapp.so` holds the new address and neither the
+  earlier one nor `ice.plezy.app`. An upload from the TV is still untried.
+- The operator then asked for the MyAnimeList and AniList sign-in.
+  `worker/src/sign-in.ts` is a rewrite of `server/oauth.go` as a second
+  Durable Object that, like the original, holds sessions and tokens in memory
+  only. Its tests run in the Workers runtime against a stand-in provider (9
+  with the log tests), and seven deliberate breakages each fail one: a return
+  that is not single-use, a result handed out twice, junk sessions charged to
+  an address, sessions that never expire, the secret sent to MyAnimeList, a
+  state accepted on the other provider's path, and a result taken by a poll
+  the device gave up on. An independent review against `oauth.go` found no way
+  for anyone but the holder of the device's secret to get the tokens, nor to
+  get them twice. It found one place weaker than the original, that given-up
+  poll, which now loses to the device's latest poll. It also named two
+  weaknesses the original shares and that are left as they are: whoever sees
+  the QR code can sign the TV in to an account of their own, and a person
+  talked into scanning someone else's code signs that someone in; and a few
+  addresses can fill the session table. A flood can use up the free plan's
+  daily requests whatever the Worker does. Deployed with both providers off,
+  because the fork has no registrations yet: on the live Worker a start
+  answers 400 for either, an unknown session 410, and the logs still read
+  back. The TV build is unchanged by this. Not tried: a real sign-in.
+- The operator registered a MyAnimeList app for the fork. Its client ID is in
+  `worker/cloudflare.config.ts`, which switches that provider on, and in
+  `scripts/tizen/defines.env` as `MAL_CLIENT_ID`, because the app refreshes
+  its tokens with MyAnimeList directly. On the live Worker, from a
+  workstation: a start returned a session and a link; the link redirected to
+  MyAnimeList's authorize address with this client ID, the callback
+  `https://tizenhat.balcsida.workers.dev/auth/mal/callback` and a 64-character
+  plain challenge; MyAnimeList answered that address by sending the browser on
+  to its login page rather than refusing the client; and a poll with no result
+  was held 50.1 s and answered 204. The Tizen-defined tests pass with the new
+  value (30). AniList is still off. Not tried: a sign-in carried through, from
+  the TV or anywhere, so the token exchange with the real MyAnimeList, and
+  with it the app type the registration was given, is unproven.
+- The operator then reported that MyAnimeList issued no client secret for the
+  app, which is the kind of registration the proxy needs, and registered an
+  AniList client. Its ID is in `worker/cloudflare.config.ts`; its secret was
+  taken from the operator's clipboard into the Worker's secret store without
+  being shown or written anywhere else. A deploy with the ID and no secret
+  had been refused, leaving the live Worker as it was. On the live Worker
+  afterwards: an AniList start returned a link; the link redirected to
+  AniList's authorize address with this client ID and the callback
+  `https://tizenhat.balcsida.workers.dev/auth/anilist/callback`, and no PKCE
+  parameters; AniList sent the browser on to its login page; a MyAnimeList
+  start still answered 200. AniList needs no value in the app, so the signed
+  package of run 44894723969 (TPK SHA-256
+  `894b7afa1e59d894f2b22b27ebb932db744f18a7f88e435aa049fccb485cdaa5`) serves
+  both. Not tried, for either provider: a sign-in carried through, which is
+  the first time the code is exchanged for tokens and, for AniList, the first
+  use of the secret.
+- The operator registered a Trakt app. Trakt now registers apps for PKCE and
+  issued this one no client secret, while the app signs in with Trakt's device
+  codes and sent a secret with every token request. Against Trakt, from a
+  workstation, with this client ID: a device code was issued; a poll for it
+  answered 400, Trakt's "pending", with no secret field, with an empty one
+  and with a wrong one alike, and 404 for a code that does not exist. So the
+  secret is not checked before the user approves; whether it is afterwards
+  cannot be seen without approving a code. Trakt's PKCE page asks that no
+  secret be sent, so the app now leaves the field out when its secret is
+  empty, in the device poll, the refresh and the revoke, and
+  `scripts/tizen/defines.env` sets `TRAKT_CLIENT_ID` and an empty
+  `TRAKT_CLIENT_SECRET`; left unset, the build would send upstream's secret
+  with this ID. A test fails if the field is sent again. `check.sh` passes
+  (333 tests, 5 skipped; 31 Tizen-defined) and the full suite passes 8,471
+  tests (12 skipped). Not tried: a Trakt sign-in carried through, and a token
+  refresh or revoke without a secret. Simkl and MDBList still use upstream's
+  registrations.
+- The operator registered Simkl and MDBList apps, the last two. Against each
+  provider, from a workstation, with the new client ID: a device code was
+  issued (Simkl's AUTH V2 endpoint, MDBList's device authorization) and a poll
+  before approval answered `authorization_pending`; Simkl also answered a
+  public catalog call that carried the new identity. The app named itself
+  `plezy` to both; the TV build now names itself `plezy-16`
+  (`TRACKER_APP_NAME`), the short lower-case form Simkl's documentation asks
+  for. `scripts/tizen/defines.env` now sets every key the app reads, and the
+  test fails on a key left out as well as on a misspelled one. `check.sh` and
+  the full suite passed before the MDBList value and that last check were
+  added (333 tests, 5 skipped; 31 Tizen-defined; 8,471 in all, 12 skipped);
+  the Tizen-defined tests pass with them. With this the TV build uses none of
+  upstream's server or registrations, except that Simkl's retired AUTH V1
+  client ID is still a constant in the app, used only for a session signed in
+  before Simkl's V2, which this build cannot have. Not tried, for any of the
+  five trackers: a sign-in carried through on the TV.
+- The operator asked for that last ID to go too. It is a build-time value now
+  (`SIMKL_LEGACY_CLIENT_ID`), upstream's by default, and the TV build sets it
+  to our own Simkl ID, since Simkl registers no new V1 apps. The app picks
+  that ID only for a V1 token, and no build under our package ID could sign
+  in with V1: upstream moved to V2 in 2.23.0 (4 October 2026) and the package
+  ID became ours on 11 November 2026, on 2.26.0. Should one exist anyway:
+  against Simkl, from a workstation, a made-up V1-shaped token with our ID
+  answered 401 `user_token_failed`, which the app takes as a revoked session
+  and asks to sign in again; with an empty ID it answered 412, which the app
+  takes for a rate limit, so the ID is not left empty. A real V1 token from
+  upstream's app was not tried. `check.sh` passes (333 tests, 5 skipped; 31
+  Tizen-defined) and the full suite passes 8,471 tests (12 skipped), now with
+  every value set.
+- The largest log the app sends was tried against the deployed Worker from a
+  workstation, because the free plan allows a Worker 10 ms of CPU time for a
+  request: a body of exactly 1 MiB was accepted (log `cby8sz`) and read back
+  byte for byte. The app sends a log only when asked to, whole and in one
+  request, so an upload is one request of the plan's 100,000 a day. Not
+  tried: an upload from the TV.
 
 ## Verification tiers
 

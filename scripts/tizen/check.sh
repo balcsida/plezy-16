@@ -16,4 +16,5 @@ scripts/tizen/dart.sh run scripts/checks/check_analyzer.dart
 scripts/codegen.sh --check
 scripts/tizen/flutter.sh test --no-pub test/tizen test/focus test/database \
 	test/services/jellyfin_playback_bundle_test.dart
-scripts/tizen/flutter.sh test --no-pub --dart-define=TIZEN_BUILD=true test/tizen
+scripts/tizen/flutter.sh test --no-pub --dart-define=TIZEN_BUILD=true \
+	--dart-define-from-file=scripts/tizen/defines.env test/tizen
